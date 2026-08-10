@@ -9,20 +9,20 @@ datasource db {
 
 model Requisition {
   id                  String   @id @default(cuid())
-  date                String   // Date of requisition
-  organizationName    String   // e.g. "ASR GROUP"
-  department          String   // e.g. "Information and Technology Department"
-  address             String   // Full address
+  date                String
+  organizationName    String
+  department          String
+  address             String
   applicantName       String
   applicantDepartment String
   employeeId          String
   branchName          String
   applicantAddress    String
   contact             String
-  category            String   // Desktop, Laptop, Network, CCTV, PC-Update, Others Accessories, Repairing
-  reason              String   // Reason for requisition
+  category            String
+  reason              String
   totalAmount         Float    @default(0)
-  status              String   @default("Draft") // Draft, Submitted, Approved, Rejected
+  status              String   @default("Draft")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -32,15 +32,23 @@ model Requisition {
 model RequisitionItem {
   id            String   @id @default(cuid())
   requisitionId String
-  sl            Int      // Serial number
+  sl            Int
   equipmentName String
   description   String   @default("")
   qty           Int      @default(0)
-  condition     String   @default("") // New, Used, Refurbished
+  condition     String   @default("")
   approxPrice   Float    @default(0)
   selected      Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+}
+
+model DropdownOption {
+  id        String   @id @default(cuid())
+  type      String   // "department", "branch", "address"
+  value     String   // The display value
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

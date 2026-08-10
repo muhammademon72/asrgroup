@@ -1,0 +1,1014 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef } from "react";
+     4→import {
+     5→  Save,
+     6→  Edit3,
+     7→  Trash2,
+     8→  FileDown,
+     9→  Printer,
+    10→  Plus,
+    11→  ArrowLeft,
+    12→  Search,
+    13→  Check,
+    14→  X,
+    15→  Loader2,
+    16→  FileText,
+    17→  ChevronDown,
+    18→} from "lucide-react";
+    19→import { Button } from "@/components/ui/button";
+    20→import { Input } from "@/components/ui/input";
+    21→import { Textarea } from "@/components/ui/textarea";
+    22→import { Checkbox } from "@/components/ui/checkbox";
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from "@/components/ui/select";
+    30→import {
+    31→  Dialog,
+    32→  DialogContent,
+    33→  DialogDescription,
+    34→  DialogFooter,
+    35→  DialogHeader,
+    36→  DialogTitle,
+    37→} from "@/components/ui/dialog";
+    38→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    39→import { Badge } from "@/components/ui/badge";
+    40→import { Separator } from "@/components/ui/separator";
+    41→import { useToast } from "@/hooks/use-toast";
+    42→
+    43→// Types
+    44→interface RequisitionItem {
+    45→  id?: string;
+    46→  sl: number;
+    47→  equipmentName: string;
+    48→  description: string;
+    49→  qty: number;
+    50→  condition: string;
+    51→  approxPrice: number;
+    52→  selected: boolean;
+    53→}
+    54→
+    55→interface Requisition {
+    56→  id?: string;
+    57→  date: string;
+    58→  organizationName: string;
+    59→  department: string;
+    60→  address: string;
+    61→  applicantName: string;
+    62→  applicantDepartment: string;
+    63→  employeeId: string;
+    64→  branchName: string;
+    65→  applicantAddress: string;
+    66→  contact: string;
+    67→  category: string;
+    68→  reason: string;
+    69→  totalAmount: number;
+    70→  status: string;
+    71→  items: RequisitionItem[];
+    72→  createdAt?: string;
+    73→  updatedAt?: string;
+    74→}
+    75→
+    76→// Default equipment list matching the image
+    77→const DEFAULT_EQUIPMENT_NAMES = [
+    78→  "Processor",
+    79→  "Motherboard",
+    80→  "Ram",
+    81→  "SSD Drive",
+    82→  "Power Supply",
+    83→  "CPU Casing",
+    84→  "Monitor",
+    85→  "Mouse",
+    86→  "Keyboard",
+    87→  "UPS",
+    88→  "Wi-Fi Router",
+    89→  "Network Switch",
+    90→  "CCTV Camera",
+    91→  "Printer",
+    92→  "Toner / Cartridge",
+    93→];
+    94→
+    95→const CATEGORIES = [
+    96→  "Desktop",
+    97→  "Laptop",
+    98→  "Network",
+    99→  "CCTV",
+   100→  "PC-Update",
+   101→  "Others Accessories",
+   102→  "Repairing",
+   103→];
+   104→
+   105→const CONDITIONS = ["New", "Used", "Refurbished"];
+   106→
+   107→const emptyItem = (sl: number): RequisitionItem => ({
+   108→  sl,
+   109→  equipmentName: "",
+   110→  description: "",
+   111→  qty: 0,
+   112→  condition: "",
+   113→  approxPrice: 0,
+   114→  selected: false,
+   115→});
+   116→
+   117→const getDefaultItems = (): RequisitionItem[] => {
+   118→  const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
+   119→    sl: i + 1,
+   120→    equipmentName: name,
+   121→    description: "",
+   122→    qty: 0,
+   123→    condition: "",
+   124→    approxPrice: 0,
+   125→    selected: false,
+   126→  }));
+   127→  // Add 5 empty rows
+   128→  for (let i = 0; i < 5; i++) {
+   129→    items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+   130→  }
+   131→  return items;
+   132→};
+   133→
+   134→const createEmptyRequisition = (): Requisition => ({
+   135→  date: new Date().toLocaleDateString("en-GB"),
+   136→  organizationName: "ASR GROUP",
+   137→  department: "Information and Technology Department",
+   138→  address: "House: 282/B, Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+   139→  applicantName: "",
+   140→  applicantDepartment: "Information Technology",
+   141→  employeeId: "",
+   142→  branchName: "Head Office",
+   143→  applicantAddress: "Elephant Road",
+   144→  contact: "",
+   145→  category: "Others Accessories",
+   146→  reason: "",
+   147→  totalAmount: 0,
+   148→  status: "Draft",
+   149→  items: getDefaultItems(),
+   150→});
+   151→
+   152→export default function EquipmentRequisitionSystem() {
+   153→  const [view, setView] = useState<"list" | "form">("list");
+   154→  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+   155→  const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
+   156→  const [isEditing, setIsEditing] = useState(false);
+   157→  const [editId, setEditId] = useState<string | null>(null);
+   158→  const [loading, setLoading] = useState(false);
+   159→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   160→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   161→  const [searchTerm, setSearchTerm] = useState("");
+   162→  const { toast } = useToast();
+   163→  const formRef = useRef<HTMLDivElement>(null);
+   164→
+   165→  // Fetch all requisitions
+   166→  const fetchRequisitions = useCallback(async () => {
+   167→    try {
+   168→      const res = await fetch("/api/requisitions");
+   169→      if (res.ok) {
+   170→        const data = await res.json();
+   171→        setRequisitions(data);
+   172→      }
+   173→    } catch {
+   174→      toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
+   175→    }
+   176→  }, [toast]);
+   177→
+   178→  useEffect(() => {
+   179→    fetchRequisitions();
+   180→  }, [fetchRequisitions]);
+   181→
+   182→  // Calculate total amount from selected items
+   183→  const calculateTotal = (items: RequisitionItem[]) => {
+   184→    return items.filter((i) => i.selected).reduce((sum, i) => sum + i.approxPrice * i.qty, 0);
+   185→  };
+   186→
+   187→  // Update item in the list
+   188→  const updateItem = (index: number, field: keyof RequisitionItem, value: string | number | boolean) => {
+   189→    const newItems = [...currentRequisition.items];
+   190→    newItems[index] = { ...newItems[index], [field]: value };
+   191→
+   192→    const total = calculateTotal(newItems);
+   193→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: total });
+   194→  };
+   195→
+   196→  // Add empty row
+   197→  const addRow = () => {
+   198→    const newSl = currentRequisition.items.length + 1;
+   199→    const newItems = [...currentRequisition.items, emptyItem(newSl)];
+   200→    setCurrentRequisition({ ...currentRequisition, items: newItems });
+   201→  };
+   202→
+   203→  // Remove row
+   204→  const removeRow = (index: number) => {
+   205→    const newItems = currentRequisition.items.filter((_, i) => i !== index);
+   206→    newItems.forEach((item, i) => (item.sl = i + 1));
+   207→    const total = calculateTotal(newItems);
+   208→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: total });
+   209→  };
+   210→
+   211→  // Save requisition
+   212→  const handleSave = async () => {
+   213→    // Validation
+   214→    if (!currentRequisition.applicantName.trim()) {
+   215→      toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
+   216→      return;
+   217→    }
+   218→    if (!currentRequisition.employeeId.trim()) {
+   219→      toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+   220→      return;
+   221→    }
+   222→
+   223→    setLoading(true);
+   224→    try {
+   225→      const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
+   226→      const method = editId ? "PUT" : "POST";
+   227→
+   228→      const res = await fetch(url, {
+   229→        method,
+   230→        headers: { "Content-Type": "application/json" },
+   231→        body: JSON.stringify(currentRequisition),
+   232→      });
+   233→
+   234→      if (res.ok) {
+   235→        toast({
+   236→          title: editId ? "Updated Successfully" : "Saved Successfully",
+   237→          description: `Requisition has been ${editId ? "updated" : "saved"}`,
+   238→        });
+   239→        await fetchRequisitions();
+   240→        setView("list");
+   241→        setIsEditing(false);
+   242→        setEditId(null);
+   243→        setCurrentRequisition(createEmptyRequisition());
+   244→      } else {
+   245→        const err = await res.json();
+   246→        toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+   247→      }
+   248→    } catch {
+   249→      toast({ title: "Error", description: "Failed to save requisition", variant: "destructive" });
+   250→    } finally {
+   251→      setLoading(false);
+   252→    }
+   253→  };
+   254→
+   255→  // Edit requisition
+   256→  const handleEdit = (req: Requisition) => {
+   257→    setCurrentRequisition(req);
+   258→    setEditId(req.id!);
+   259→    setIsEditing(true);
+   260→    setView("form");
+   261→  };
+   262→
+   263→  // New requisition
+   264→  const handleNew = () => {
+   265→    setCurrentRequisition(createEmptyRequisition());
+   266→    setEditId(null);
+   267→    setIsEditing(true);
+   268→    setView("form");
+   269→  };
+   270→
+   271→  // View requisition (read-only)
+   272→  const handleView = (req: Requisition) => {
+   273→    setCurrentRequisition(req);
+   274→    setEditId(req.id!);
+   275→    setIsEditing(false);
+   276→    setView("form");
+   277→  };
+   278→
+   279→  // Delete requisition
+   280→  const handleDelete = async () => {
+   281→    if (!deleteId) return;
+   282→    setLoading(true);
+   283→    try {
+   284→      const res = await fetch(`/api/requisitions/${deleteId}`, { method: "DELETE" });
+   285→      if (res.ok) {
+   286→        toast({ title: "Deleted", description: "Requisition has been deleted" });
+   287→        await fetchRequisitions();
+   288→      }
+   289→    } catch {
+   290→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   291→    } finally {
+   292→      setLoading(false);
+   293→      setDeleteDialogOpen(false);
+   294→      setDeleteId(null);
+   295→    }
+   296→  };
+   297→
+   298→  // PDF Download
+   299→  const handlePDFDownload = () => {
+   300→    const printWindow = window.open("", "_blank");
+   301→    if (!printWindow) return;
+   302→    const html = generatePrintHTML(currentRequisition);
+   303→    printWindow.document.write(html);
+   304→    printWindow.document.close();
+   305→    setTimeout(() => {
+   306→      printWindow.print();
+   307→    }, 500);
+   308→  };
+   309→
+   310→  // Print
+   311→  const handlePrint = () => {
+   312→    const printWindow = window.open("", "_blank");
+   313→    if (!printWindow) return;
+   314→    const html = generatePrintHTML(currentRequisition, true);
+   315→    printWindow.document.write(html);
+   316→    printWindow.document.close();
+   317→    setTimeout(() => {
+   318→      printWindow.print();
+   319→    }, 500);
+   320→  };
+   321→
+   322→  // Generate print HTML
+   323→  const generatePrintHTML = (req: Requisition, isPrint = false) => {
+   324→    const selectedItems = req.items.filter((i) => i.selected || i.qty > 0);
+   325→    return `<!DOCTYPE html>
+   326→<html>
+   327→<head>
+   328→  <title>Equipment Requisition Form</title>
+   329→  <style>
+   330→    * { margin: 0; padding: 0; box-sizing: border-box; }
+   331→    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1a1a1a; font-size: 13px; }
+   332→    .container { max-width: 900px; margin: 0 auto; border: 2px solid #333; padding: 30px; }
+   333→    .header { text-align: center; margin-bottom: 20px; }
+   334→    .header h1 { font-size: 22px; font-weight: 800; letter-spacing: 2px; margin-bottom: 4px; }
+   335→    .header h2 { font-size: 14px; font-weight: 600; color: #444; }
+   336→    .top-section { display: flex; gap: 20px; margin-bottom: 20px; }
+   337→    .left-col { flex: 1; }
+   338→    .right-col { flex: 1; }
+   339→    .field { margin-bottom: 8px; }
+   340→    .field-label { font-weight: 600; font-size: 12px; color: #555; }
+   341→    .field-value { font-size: 13px; }
+   342→    .applicant-table { width: 100%; border-collapse: collapse; }
+   343→    .applicant-table td { border: 1px solid #999; padding: 6px 10px; font-size: 12px; }
+   344→    .applicant-table td:first-child { font-weight: 600; background: #f5f5f5; width: 40%; }
+   345→    .category-bar { display: flex; gap: 15px; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; flex-wrap: wrap; background: #fafafa; }
+   346→    .category-item { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+   347→    .category-item input[type="checkbox"] { transform: scale(0.9); }
+   348→    .equipment-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+   349→    .equipment-table th { border: 1px solid #333; padding: 8px; background: #e8e8e8; font-size: 12px; font-weight: 700; text-align: center; }
+   350→    .equipment-table td { border: 1px solid #999; padding: 6px 8px; font-size: 12px; }
+   351→    .equipment-table tr:nth-child(even) { background: #fafafa; }
+   352→    .total-row { background: #e0e7ff !important; font-weight: 700; }
+   353→    .reason-section { margin-bottom: 25px; }
+   354→    .reason-section h3 { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+   355→    .reason-text { border: 1px solid #ccc; padding: 10px; min-height: 50px; background: #fafafa; }
+   356→    .signature-section { display: flex; justify-content: space-between; margin-top: 30px; }
+   357→    .signature-block { text-align: center; flex: 1; }
+   358→    .signature-line { border-top: 1px dashed #666; margin: 40px 20px 8px 20px; }
+   359→    .signature-label { font-size: 12px; font-weight: 600; }
+   360→    .date-line { margin-top: 5px; font-size: 11px; color: #888; }
+   361→    .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+   362→    .badge-draft { background: #fef3c7; color: #92400e; }
+   363→    .badge-submitted { background: #dbeafe; color: #1e40af; }
+   364→    .badge-approved { background: #d1fae5; color: #065f46; }
+   365→    .badge-rejected { background: #fee2e2; color: #991b1b; }
+   366→    @media print { body { padding: 0; } .container { border: none; padding: 10px; } }
+   367→  </style>
+   368→</head>
+   369→<body>
+   370→  <div class="container">
+   371→    <div class="header">
+   372→      <h1>EQUIPMENT REQUISITION FORM</h1>
+   373→      <h2>${req.department}</h2>
+   374→    </div>
+   375→
+   376→    <div class="top-section">
+   377→      <div class="left-col">
+   378→        <div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
+   379→        <div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+   380→        <div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
+   381→        <div class="field"><span class="field-value">${req.department}</span></div>
+   382→        <div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
+   383→      </div>
+   384→      <div class="right-col">
+   385→        <table class="applicant-table">
+   386→          <tr><td>Applicant Name</td><td>${req.applicantName}</td></tr>
+   387→          <tr><td>Applicant Department</td><td>${req.applicantDepartment}</td></tr>
+   388→          <tr><td>Employee ID</td><td>${req.employeeId}</td></tr>
+   389→          <tr><td>Branch Name</td><td>${req.branchName}</td></tr>
+   390→          <tr><td>Address</td><td>${req.applicantAddress}</td></tr>
+   391→          <tr><td>Contact</td><td>${req.contact}</td></tr>
+   392→        </table>
+   393→      </div>
+   394→    </div>
+   395→
+   396→    <div class="category-bar">
+   397→      ${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+   398→    </div>
+   399→
+   400→    <table class="equipment-table">
+   401→      <thead>
+   402→        <tr>
+   403→          <th style="width:40px">SL</th>
+   404→          <th style="width:50px">Select</th>
+   405→          <th>EQUIPMENT NAME</th>
+   406→          <th>DESCRIPTION</th>
+   407→          <th style="width:60px">QTY</th>
+   408→          <th style="width:90px">CONDITION</th>
+   409→          <th style="width:100px">APPROX PRICE</th>
+   410→        </tr>
+   411→      </thead>
+   412→      <tbody>
+   413→        ${req.items.map((item) => `
+   414→          <tr>
+   415→            <td style="text-align:center">${item.sl}</td>
+   416→            <td style="text-align:center"><input type="checkbox" ${item.selected ? "checked" : ""} disabled /></td>
+   417→            <td>${item.equipmentName}</td>
+   418→            <td>${item.description}</td>
+   419→            <td style="text-align:center">${item.qty || "-"}</td>
+   420→            <td style="text-align:center">${item.condition || "-"}</td>
+   421→            <td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+   422→          </tr>
+   423→        `).join("")}
+   424→        <tr class="total-row">
+   425→          <td colspan="6" style="text-align:right; padding-right:15px">Total Amount:</td>
+   426→          <td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td>
+   427→        </tr>
+   428→      </tbody>
+   429→    </table>
+   430→
+   431→    <div class="reason-section">
+   432→      <h3>PLEASE WRITE A REASON :</h3>
+   433→      <div class="reason-text">${req.reason || "-"}</div>
+   434→    </div>
+   435→
+   436→    <div class="signature-section">
+   437→      <div class="signature-block">
+   438→        <div class="signature-line"></div>
+   439→        <div class="signature-label">Applicant</div>
+   440→      </div>
+   441→      <div class="signature-block">
+   442→        <div class="signature-line"></div>
+   443→        <div class="signature-label">Manager / In-Charge</div>
+   444→      </div>
+   445→      <div class="signature-block">
+   446→        <div class="signature-line"></div>
+   447→        <div class="signature-label">Recommend by</div>
+   448→      </div>
+   449→      <div class="signature-block">
+   450→        <div class="signature-line"></div>
+   451→        <div class="signature-label">Authority</div>
+   452→      </div>
+   453→    </div>
+   454→  </div>
+   455→</body>
+   456→</html>`;
+   457→  };
+   458→
+   459→  // Status badge helper
+   460→  const getStatusBadge = (status: string) => {
+   461→    const colors: Record<string, string> = {
+   462→      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+   463→      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+   464→      Approved: "bg-green-100 text-green-800 border-green-300",
+   465→      Rejected: "bg-red-100 text-red-800 border-red-300",
+   466→    };
+   467→    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+   468→  };
+   469→
+   470→  // Filter requisitions by search
+   471→  const filteredRequisitions = requisitions.filter(
+   472→    (r) =>
+   473→      r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   474→      r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   475→      r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   476→      r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+   477→  );
+   478→
+   479→  // ===================== LIST VIEW =====================
+   480→  if (view === "list") {
+   481→    return (
+   482→      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   483→        {/* Header */}
+   484→        <div className="bg-white border-b shadow-sm">
+   485→          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+   486→            <div className="flex items-center gap-3">
+   487→              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+   488→                <FileText className="w-5 h-5 text-white" />
+   489→              </div>
+   490→              <div>
+   491→                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+   492→                <p className="text-xs text-slate-500">Information and Technology Department</p>
+   493→              </div>
+   494→            </div>
+   495→            <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   496→              <Plus className="w-4 h-4" /> New Requisition
+   497→            </Button>
+   498→          </div>
+   499→        </div>
+   500→
+   501→        <div className="max-w-7xl mx-auto px-4 py-6">
+   502→          {/* Search */}
+   503→          <div className="flex items-center gap-3 mb-4">
+   504→            <div className="relative flex-1 max-w-md">
+   505→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   506→              <Input
+   507→                placeholder="Search by name, employee ID, organization..."
+   508→                value={searchTerm}
+   509→                onChange={(e) => setSearchTerm(e.target.value)}
+   510→                className="pl-10"
+   511→              />
+   512→            </div>
+   513→            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+   514→          </div>
+   515→
+   516→          {/* Table */}
+   517→          {filteredRequisitions.length === 0 ? (
+   518→            <Card className="text-center py-16">
+   519→              <CardContent>
+   520→                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+   521→                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+   522→                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+   523→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   524→                  <Plus className="w-4 h-4" /> New Requisition
+   525→                </Button>
+   526→              </CardContent>
+   527→            </Card>
+   528→          ) : (
+   529→            <Card>
+   530→              <div className="overflow-x-auto">
+   531→                <table className="w-full">
+   532→                  <thead>
+   533→                    <tr className="border-b bg-slate-50">
+   534→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+   535→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+   536→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+   537→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+   538→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+   539→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+   540→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+   541→                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+   542→                    </tr>
+   543→                  </thead>
+   544→                  <tbody>
+   545→                    {filteredRequisitions.map((req, idx) => (
+   546→                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+   547→                        <td className="p-3 text-sm">{idx + 1}</td>
+   548→                        <td className="p-3 text-sm">{req.date}</td>
+   549→                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+   550→                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+   551→                        <td className="p-3 text-sm">{req.category}</td>
+   552→                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+   553→                        <td className="p-3">
+   554→                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>
+   555→                            {req.status}
+   556→                          </span>
+   557→                        </td>
+   558→                        <td className="p-3">
+   559→                          <div className="flex items-center justify-center gap-1">
+   560→                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0">
+   561→                              <FileText className="w-4 h-4 text-slate-600" />
+   562→                            </Button>
+   563→                            <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0">
+   564→                              <Edit3 className="w-4 h-4 text-blue-600" />
+   565→                            </Button>
+   566→                            <Button
+   567→                              variant="ghost"
+   568→                              size="sm"
+   569→                              onClick={() => {
+   570→                                setDeleteId(req.id!);
+   571→                                setDeleteDialogOpen(true);
+   572→                              }}
+   573→                              title="Delete"
+   574→                              className="h-8 w-8 p-0"
+   575→                            >
+   576→                              <Trash2 className="w-4 h-4 text-red-500" />
+   577→                            </Button>
+   578→                          </div>
+   579→                        </td>
+   580→                      </tr>
+   581→                    ))}
+   582→                  </tbody>
+   583→                </table>
+   584→              </div>
+   585→            </Card>
+   586→          )}
+   587→        </div>
+   588→
+   589→        {/* Delete Confirmation Dialog */}
+   590→        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   591→          <DialogContent>
+   592→            <DialogHeader>
+   593→              <DialogTitle>Delete Requisition</DialogTitle>
+   594→              <DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription>
+   595→            </DialogHeader>
+   596→            <DialogFooter>
+   597→              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+   598→              <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+   599→                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+   600→              </Button>
+   601→            </DialogFooter>
+   602→          </DialogContent>
+   603→        </Dialog>
+   604→      </div>
+   605→    );
+   606→  }
+   607→
+   608→  // ===================== FORM VIEW =====================
+   609→  return (
+   610→    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   611→      {/* Header */}
+   612→      <div className="bg-white border-b shadow-sm">
+   613→        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+   614→          <div className="flex items-center gap-3">
+   615→            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1">
+   616→              <ArrowLeft className="w-4 h-4" /> Back
+   617→            </Button>
+   618→            <Separator orientation="vertical" className="h-6" />
+   619→            <h2 className="text-sm font-semibold text-slate-700">
+   620→              {isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}
+   621→            </h2>
+   622→          </div>
+   623→          <div className="flex items-center gap-2">
+   624→            {isEditing && (
+   625→              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   626→                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+   627→              </Button>
+   628→            )}
+   629→            {!isEditing && editId && (
+   630→              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500">
+   631→                <Edit3 className="w-4 h-4" /> Edit
+   632→              </Button>
+   633→            )}
+   634→            <Button variant="outline" onClick={handlePDFDownload} className="gap-2">
+   635→              <FileDown className="w-4 h-4" /> PDF
+   636→            </Button>
+   637→            <Button variant="outline" onClick={handlePrint} className="gap-2">
+   638→              <Printer className="w-4 h-4" /> Print
+   639→            </Button>
+   640→          </div>
+   641→        </div>
+   642→      </div>
+   643→
+   644→      {/* Form Content */}
+   645→      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+   646→        <Card className="shadow-md border-slate-300">
+   647→          <CardContent className="p-6">
+   648→            {/* Title */}
+   649→            <div className="text-center mb-6">
+   650→              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+   651→              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+   652→            </div>
+   653→
+   654→            {/* Top Section: Left Info + Right Applicant Table */}
+   655→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+   656→              {/* Left Column */}
+   657→              <div className="space-y-3">
+   658→                <div>
+   659→                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+   660→                  {isEditing ? (
+   661→                    <Input
+   662→                      value={currentRequisition.date}
+   663→                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, date: e.target.value })}
+   664→                      className="mt-1"
+   665→                    />
+   666→                  ) : (
+   667→                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+   668→                  )}
+   669→                </div>
+   670→                <div className="pt-2">
+   671→                  <p className="text-xs font-semibold text-slate-500">To,</p>
+   672→                </div>
+   673→                <div>
+   674→                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+   675→                  {isEditing ? (
+   676→                    <Input
+   677→                      value={currentRequisition.organizationName}
+   678→                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })}
+   679→                      className="mt-1"
+   680→                    />
+   681→                  ) : (
+   682→                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+   683→                  )}
+   684→                </div>
+   685→                <div>
+   686→                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+   687→                  {isEditing ? (
+   688→                    <Input
+   689→                      value={currentRequisition.department}
+   690→                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })}
+   691→                      className="mt-1"
+   692→                    />
+   693→                  ) : (
+   694→                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+   695→                  )}
+   696→                </div>
+   697→                <div>
+   698→                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+   699→                  {isEditing ? (
+   700→                    <Textarea
+   701→                      value={currentRequisition.address}
+   702→                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })}
+   703→                      className="mt-1"
+   704→                      rows={2}
+   705→                    />
+   706→                  ) : (
+   707→                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+   708→                  )}
+   709→                </div>
+   710→              </div>
+   711→
+   712→              {/* Right Column - Applicant Table */}
+   713→              <div className="border border-slate-300 rounded-md overflow-hidden">
+   714→                <table className="w-full text-sm">
+   715→                  <tbody>
+   716→                    <tr className="border-b border-slate-200">
+   717→                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+   718→                      <td className="p-2">
+   719→                        {isEditing ? (
+   720→                          <Input
+   721→                            value={currentRequisition.applicantName}
+   722→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })}
+   723→                            className="h-7 text-sm"
+   724→                          />
+   725→                        ) : (
+   726→                          <span>{currentRequisition.applicantName}</span>
+   727→                        )}
+   728→                      </td>
+   729→                    </tr>
+   730→                    <tr className="border-b border-slate-200">
+   731→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+   732→                      <td className="p-2">
+   733→                        {isEditing ? (
+   734→                          <Input
+   735→                            value={currentRequisition.applicantDepartment}
+   736→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: e.target.value })}
+   737→                            className="h-7 text-sm"
+   738→                          />
+   739→                        ) : (
+   740→                          <span>{currentRequisition.applicantDepartment}</span>
+   741→                        )}
+   742→                      </td>
+   743→                    </tr>
+   744→                    <tr className="border-b border-slate-200">
+   745→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+   746→                      <td className="p-2">
+   747→                        {isEditing ? (
+   748→                          <Input
+   749→                            value={currentRequisition.employeeId}
+   750→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })}
+   751→                            className="h-7 text-sm font-mono"
+   752→                          />
+   753→                        ) : (
+   754→                          <span className="font-mono">{currentRequisition.employeeId}</span>
+   755→                        )}
+   756→                      </td>
+   757→                    </tr>
+   758→                    <tr className="border-b border-slate-200">
+   759→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+   760→                      <td className="p-2">
+   761→                        {isEditing ? (
+   762→                          <Input
+   763→                            value={currentRequisition.branchName}
+   764→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, branchName: e.target.value })}
+   765→                            className="h-7 text-sm"
+   766→                          />
+   767→                        ) : (
+   768→                          <span>{currentRequisition.branchName}</span>
+   769→                        )}
+   770→                      </td>
+   771→                    </tr>
+   772→                    <tr className="border-b border-slate-200">
+   773→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+   774→                      <td className="p-2">
+   775→                        {isEditing ? (
+   776→                          <Input
+   777→                            value={currentRequisition.applicantAddress}
+   778→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantAddress: e.target.value })}
+   779→                            className="h-7 text-sm"
+   780→                          />
+   781→                        ) : (
+   782→                          <span>{currentRequisition.applicantAddress}</span>
+   783→                        )}
+   784→                      </td>
+   785→                    </tr>
+   786→                    <tr>
+   787→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+   788→                      <td className="p-2">
+   789→                        {isEditing ? (
+   790→                          <Input
+   791→                            value={currentRequisition.contact}
+   792→                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })}
+   793→                            className="h-7 text-sm"
+   794→                          />
+   795→                        ) : (
+   796→                          <span>{currentRequisition.contact}</span>
+   797→                        )}
+   798→                      </td>
+   799→                    </tr>
+   800→                  </tbody>
+   801→                </table>
+   802→              </div>
+   803→            </div>
+   804→
+   805→            {/* Category Selection Bar */}
+   806→            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+   807→              <div className="flex flex-wrap gap-4 items-center">
+   808→                {CATEGORIES.map((cat) => (
+   809→                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+   810→                    <Checkbox
+   811→                      checked={currentRequisition.category === cat}
+   812→                      onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })}
+   813→                      disabled={!isEditing}
+   814→                    />
+   815→                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+   816→                  </label>
+   817→                ))}
+   818→              </div>
+   819→            </div>
+   820→
+   821→            {/* Equipment Table */}
+   822→            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+   823→              <table className="w-full text-sm">
+   824→                <thead>
+   825→                  <tr className="bg-slate-200 border-b border-slate-400">
+   826→                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+   827→                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+   828→                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+   829→                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+   830→                    <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
+   831→                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+   832→                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+   833→                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+   834→                  </tr>
+   835→                </thead>
+   836→                <tbody>
+   837→                  {currentRequisition.items.map((item, index) => (
+   838→                    <tr key={index} className={`border-b border-slate-200 ${item.selected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+   839→                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+   840→                      <td className="p-2 text-center">
+   841→                        <Checkbox
+   842→                          checked={item.selected}
+   843→                          onCheckedChange={(checked) => isEditing && updateItem(index, "selected", !!checked)}
+   844→                          disabled={!isEditing}
+   845→                        />
+   846→                      </td>
+   847→                      <td className="p-2">
+   848→                        {isEditing ? (
+   849→                          <Input
+   850→                            value={item.equipmentName}
+   851→                            onChange={(e) => updateItem(index, "equipmentName", e.target.value)}
+   852→                            className="h-7 text-xs"
+   853→                          />
+   854→                        ) : (
+   855→                          <span className="text-xs">{item.equipmentName || "-"}</span>
+   856→                        )}
+   857→                      </td>
+   858→                      <td className="p-2">
+   859→                        {isEditing ? (
+   860→                          <Input
+   861→                            value={item.description}
+   862→                            onChange={(e) => updateItem(index, "description", e.target.value)}
+   863→                            className="h-7 text-xs"
+   864→                            placeholder="—"
+   865→                          />
+   866→                        ) : (
+   867→                          <span className="text-xs">{item.description || "—"}</span>
+   868→                        )}
+   869→                      </td>
+   870→                      <td className="p-2">
+   871→                        {isEditing ? (
+   872→                          <Input
+   873→                            type="number"
+   874→                            value={item.qty || ""}
+   875→                            onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)}
+   876→                            className="h-7 text-xs text-center"
+   877→                            min={0}
+   878→                          />
+   879→                        ) : (
+   880→                          <span className="text-xs text-center block">{item.qty || "—"}</span>
+   881→                        )}
+   882→                      </td>
+   883→                      <td className="p-2">
+   884→                        {isEditing ? (
+   885→                          <Select
+   886→                            value={item.condition}
+   887→                            onValueChange={(val) => updateItem(index, "condition", val)}
+   888→                          >
+   889→                            <SelectTrigger className="h-7 text-xs">
+   890→                              <SelectValue placeholder="—" />
+   891→                            </SelectTrigger>
+   892→                            <SelectContent>
+   893→                              {CONDITIONS.map((c) => (
+   894→                                <SelectItem key={c} value={c}>{c}</SelectItem>
+   895→                              ))}
+   896→                            </SelectContent>
+   897→                          </Select>
+   898→                        ) : (
+   899→                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+   900→                        )}
+   901→                      </td>
+   902→                      <td className="p-2">
+   903→                        {isEditing ? (
+   904→                          <Input
+   905→                            type="number"
+   906→                            value={item.approxPrice || ""}
+   907→                            onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)}
+   908→                            className="h-7 text-xs text-right"
+   909→                            min={0}
+   910→                          />
+   911→                        ) : (
+   912→                          <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>
+   913→                        )}
+   914→                      </td>
+   915→                      {isEditing && (
+   916→                        <td className="p-1 text-center">
+   917→                          <Button
+   918→                            variant="ghost"
+   919→                            size="sm"
+   920→                            onClick={() => removeRow(index)}
+   921→                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+   922→                          >
+   923→                            <X className="w-3 h-3" />
+   924→                          </Button>
+   925→                        </td>
+   926→                      )}
+   927→                    </tr>
+   928→                  ))}
+   929→                  {/* Total Row */}
+   930→                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+   931→                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">
+   932→                      Total Amount:
+   933→                    </td>
+   934→                    <td className="p-2 text-right font-bold text-sm">
+   935→                      ৳{currentRequisition.totalAmount.toLocaleString()}
+   936→                    </td>
+   937→                    {isEditing && <td></td>}
+   938→                  </tr>
+   939→                </tbody>
+   940→              </table>
+   941→            </div>
+   942→
+   943→            {/* Add Row Button */}
+   944→            {isEditing && (
+   945→              <div className="mb-6">
+   946→                <Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs">
+   947→                  <Plus className="w-3 h-3" /> Add Row
+   948→                </Button>
+   949→              </div>
+   950→            )}
+   951→
+   952→            {/* Reason Section */}
+   953→            <div className="mb-8">
+   954→              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+   955→              {isEditing ? (
+   956→                <Textarea
+   957→                  value={currentRequisition.reason}
+   958→                  onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })}
+   959→                  className="min-h-[80px]"
+   960→                  placeholder="Write your reason here..."
+   961→                />
+   962→              ) : (
+   963→                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">
+   964→                  {currentRequisition.reason || "—"}
+   965→                </div>
+   966→              )}
+   967→            </div>
+   968→
+   969→            {/* Status (when editing existing) */}
+   970→            {editId && (
+   971→              <div className="mb-8">
+   972→                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+   973→                {isEditing ? (
+   974→                  <Select
+   975→                    value={currentRequisition.status}
+   976→                    onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}
+   977→                  >
+   978→                    <SelectTrigger className="mt-1 w-[200px]">
+   979→                      <SelectValue />
+   980→                    </SelectTrigger>
+   981→                    <SelectContent>
+   982→                      <SelectItem value="Draft">Draft</SelectItem>
+   983→                      <SelectItem value="Submitted">Submitted</SelectItem>
+   984→                      <SelectItem value="Approved">Approved</SelectItem>
+   985→                      <SelectItem value="Rejected">Rejected</SelectItem>
+   986→                    </SelectContent>
+   987→                  </Select>
+   988→                ) : (
+   989→                  <div className="mt-1">
+   990→                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>
+   991→                      {currentRequisition.status}
+   992→                    </span>
+   993→                  </div>
+   994→                )}
+   995→              </div>
+   996→            )}
+   997→
+   998→            {/* Signature Section */}
+   999→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+  1000→              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+  1001→                <div key={role} className="text-center">
+  1002→                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2">
+  1003→                    <p className="text-xs font-semibold text-slate-600">{role}</p>
+  1004→                  </div>
+  1005→                </div>
+  1006→              ))}
+  1007→            </div>
+  1008→          </CardContent>
+  1009→        </Card>
+  1010→      </div>
+  1011→    </div>
+  1012→  );
+  1013→}
+  1014→
