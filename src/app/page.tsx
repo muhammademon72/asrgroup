@@ -16,7 +16,9 @@ import {
   Settings2,
   Pencil,
   Check,
+  CalendarIcon,
 } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +46,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 
 // Types
@@ -302,6 +305,54 @@ function DropdownWithManage({
         </Popover>
       )}
     </div>
+  );
+}
+
+// ==================== DatePickerWithAutoClose Component ====================
+function DatePickerWithAutoClose({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const parseDate = (dateStr: string): Date | undefined => {
+    if (!dateStr) return undefined;
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    return undefined;
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="mt-1 w-full justify-start text-left font-normal h-9"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+          {value || "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={parseDate(value)}
+          onSelect={(date) => {
+            if (date) {
+              onChange(format(date, "dd/MM/yyyy"));
+              setOpen(false);
+            }
+          }}
+          captionLayout="dropdown-buttons"
+          defaultMonth={parseDate(value) || new Date()}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -627,7 +678,10 @@ ${req.items.map((item) => `<tr>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
                   {isEditing ? (
-                    <Input value={currentRequisition.date} onChange={(e) => setCurrentRequisition({ ...currentRequisition, date: e.target.value })} className="mt-1" />
+                    <DatePickerWithAutoClose
+                      value={currentRequisition.date}
+                      onChange={(val) => setCurrentRequisition({ ...currentRequisition, date: val })}
+                    />
                   ) : (
                     <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
                   )}
