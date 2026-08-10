@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Requisition {
+  id                  String   @id @default(cuid())
+  date                String   // Date of requisition
+  organizationName    String   // e.g. "ASR GROUP"
+  department          String   // e.g. "Information and Technology Department"
+  address             String   // Full address
+  applicantName       String
+  applicantDepartment String
+  employeeId          String
+  branchName          String
+  applicantAddress    String
+  contact             String
+  category            String   // Desktop, Laptop, Network, CCTV, PC-Update, Others Accessories, Repairing
+  reason              String   // Reason for requisition
+  totalAmount         Float    @default(0)
+  status              String   @default("Draft") // Draft, Submitted, Approved, Rejected
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  items RequisitionItem[]
+}
+
+model RequisitionItem {
+  id            String   @id @default(cuid())
+  requisitionId String
+  sl            Int      // Serial number
+  equipmentName String
+  description   String   @default("")
+  qty           Int      @default(0)
+  condition     String   @default("") // New, Used, Refurbished
+  approxPrice   Float    @default(0)
+  selected      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  requisition Requisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+}

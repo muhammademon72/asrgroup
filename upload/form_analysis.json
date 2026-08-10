@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Here is a detailed analysis of the **Equipment Requisition Form** based on the provided image:\n\n### **1. Header Section**\n*   **Main Title:** EQUIPMENT REQUISITION FORM (Centered, Bold, Large Font)\n*   **Sub-Title:** Information and Technology Department (Centered, below main title)\n\n---\n\n### **2. Top Information Area (Split Layout)**\n\n**Left Column (Recipient & Date):**\n*   **Date:** 06/07/2026\n*   **To,**\n    *   **Organization Name:** ASR GROUP\n    *   **Department:** Information and Technology Department\n    *   **Full Address:** House: 282/B, Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh\n\n**Right Column (Applicant Details Table):**\nA bordered table containing the following fields:\n| Field Label | Pre-filled Value |\n| :--- | :--- |\n| Applicant Name | Md Emon Hossain |\n| Applicant Department | Information Technology |\n| Employee ID | ASRG19890019 |\n| Branch Name | Head Office |\n| Address | Elephant Road |\n| Contact | 01714142078 |\n\n---\n\n### **3. Equipment Category Selection Bar**\nA horizontal row of checkboxes for categorizing the request. The \"Others Accessories\" option is checked.\n*   [ ] Desktop\n*   [ ] Laptop\n*   [ ] Network\n*   [ ] CCTV\n*   [ ] PC-Update\n*   [x] Others Accessories\n*   [ ] Repairing\n\n---\n\n### **4. Main Equipment List Table**\nA detailed table with columns for itemizing equipment requests.\n\n**Table Headers:**\n1.  **Select | SL** (Selection checkbox + Serial Number)\n2.  **EQUIPMENT NAME**\n3.  **DESCRIPTION**\n4.  **QTY** (Quantity)\n5.  **CONDITION**\n6.  **APPROX PRICE**\n\n**Table Content (Rows 1–20):**\n*   **Row 1:** Processor | — | — | — | —\n*   **Row 2:** Motherboard | — | — | — | —\n*   **Row 3:** Ram | Laptop RAM DDR4 8GB | **1** | **New** | **৳3,500** *(This row is selected with a checkmark)*\n*   **Row 4:** SSD Drive | — | — | — | —\n*   **Row 5:** Power Supply | — | — | — | —\n*   **Row 6:** CPU Casing | — | — | — | —\n*   **Row 7:** Monitor | — | — | — | —\n*   **Row 8:** Mouse | — | — | — | —\n*   **Row 9:** Keyboard | — | — | — | —\n*   **Row 10:** UPS | — | — | — | —\n*   **Row 11:** Wi-Fi Router | — | — | — | —\n*   **Row 12:** Network Switch | — | — | — | —\n*   **Row 13:** CCTV Camera | — | — | — | —\n*   **Row 14:** Printer | — | — | — | —\n*   **Row 15:** Toner / Cartridge | — | — | — | —\n*   **Rows 16–20:** Empty rows (marked with \"—\") for additional entries.\n\n**Table Footer:**\n*   **Total Amount:** **৳3,500** (Highlighted in light blue/purple background)\n\n---\n\n### **5. Reason Section**\n*   **Section Header:** PLEASE WRITE A REASON :\n*   **Content Field:** Present Laptop ram problem.\n\n---\n\n### **6. Signature / Authorization Section (Footer)**\nFour signature blocks arranged horizontally at the bottom, separated by dotted lines:\n\n1.  **Signature**\n    *   *Role:* Applicant\n2.  **Signature**\n    *   *Role:* Manager / In-Charge\n3.  **Signature**\n    *   *Role:* Recommend by\n4.  **Signature**\n    *   *Role:* Authority",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1786388592,
+  "id": "2026081103030220e3ef97334542f5",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026081103030220e3ef97334542f5",
+  "usage": {
+    "completion_tokens": 879,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2897,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 3776
+  }
+}

@@ -1,0 +1,1013 @@
+"use client";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Save,
+  Edit3,
+  Trash2,
+  FileDown,
+  Printer,
+  Plus,
+  ArrowLeft,
+  Search,
+  Check,
+  X,
+  Loader2,
+  FileText,
+  ChevronDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+
+// Types
+interface RequisitionItem {
+  id?: string;
+  sl: number;
+  equipmentName: string;
+  description: string;
+  qty: number;
+  condition: string;
+  approxPrice: number;
+  selected: boolean;
+}
+
+interface Requisition {
+  id?: string;
+  date: string;
+  organizationName: string;
+  department: string;
+  address: string;
+  applicantName: string;
+  applicantDepartment: string;
+  employeeId: string;
+  branchName: string;
+  applicantAddress: string;
+  contact: string;
+  category: string;
+  reason: string;
+  totalAmount: number;
+  status: string;
+  items: RequisitionItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Default equipment list matching the image
+const DEFAULT_EQUIPMENT_NAMES = [
+  "Processor",
+  "Motherboard",
+  "Ram",
+  "SSD Drive",
+  "Power Supply",
+  "CPU Casing",
+  "Monitor",
+  "Mouse",
+  "Keyboard",
+  "UPS",
+  "Wi-Fi Router",
+  "Network Switch",
+  "CCTV Camera",
+  "Printer",
+  "Toner / Cartridge",
+];
+
+const CATEGORIES = [
+  "Desktop",
+  "Laptop",
+  "Network",
+  "CCTV",
+  "PC-Update",
+  "Others Accessories",
+  "Repairing",
+];
+
+const CONDITIONS = ["New", "Used", "Refurbished"];
+
+const emptyItem = (sl: number): RequisitionItem => ({
+  sl,
+  equipmentName: "",
+  description: "",
+  qty: 0,
+  condition: "",
+  approxPrice: 0,
+  selected: false,
+});
+
+const getDefaultItems = (): RequisitionItem[] => {
+  const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
+    sl: i + 1,
+    equipmentName: name,
+    description: "",
+    qty: 0,
+    condition: "",
+    approxPrice: 0,
+    selected: false,
+  }));
+  // Add 5 empty rows
+  for (let i = 0; i < 5; i++) {
+    items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+  }
+  return items;
+};
+
+const createEmptyRequisition = (): Requisition => ({
+  date: new Date().toLocaleDateString("en-GB"),
+  organizationName: "ASR GROUP",
+  department: "Information and Technology Department",
+  address: "House: 282/B, Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+  applicantName: "",
+  applicantDepartment: "Information Technology",
+  employeeId: "",
+  branchName: "Head Office",
+  applicantAddress: "Elephant Road",
+  contact: "",
+  category: "Others Accessories",
+  reason: "",
+  totalAmount: 0,
+  status: "Draft",
+  items: getDefaultItems(),
+});
+
+export default function EquipmentRequisitionSystem() {
+  const [view, setView] = useState<"list" | "form">("list");
+  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+  const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // Fetch all requisitions
+  const fetchRequisitions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/requisitions");
+      if (res.ok) {
+        const data = await res.json();
+        setRequisitions(data);
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRequisitions();
+  }, [fetchRequisitions]);
+
+  // Calculate total amount from selected items
+  const calculateTotal = (items: RequisitionItem[]) => {
+    return items.filter((i) => i.selected).reduce((sum, i) => sum + i.approxPrice * i.qty, 0);
+  };
+
+  // Update item in the list
+  const updateItem = (index: number, field: keyof RequisitionItem, value: string | number | boolean) => {
+    const newItems = [...currentRequisition.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+
+    const total = calculateTotal(newItems);
+    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: total });
+  };
+
+  // Add empty row
+  const addRow = () => {
+    const newSl = currentRequisition.items.length + 1;
+    const newItems = [...currentRequisition.items, emptyItem(newSl)];
+    setCurrentRequisition({ ...currentRequisition, items: newItems });
+  };
+
+  // Remove row
+  const removeRow = (index: number) => {
+    const newItems = currentRequisition.items.filter((_, i) => i !== index);
+    newItems.forEach((item, i) => (item.sl = i + 1));
+    const total = calculateTotal(newItems);
+    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: total });
+  };
+
+  // Save requisition
+  const handleSave = async () => {
+    // Validation
+    if (!currentRequisition.applicantName.trim()) {
+      toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
+      return;
+    }
+    if (!currentRequisition.employeeId.trim()) {
+      toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
+      const method = editId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentRequisition),
+      });
+
+      if (res.ok) {
+        toast({
+          title: editId ? "Updated Successfully" : "Saved Successfully",
+          description: `Requisition has been ${editId ? "updated" : "saved"}`,
+        });
+        await fetchRequisitions();
+        setView("list");
+        setIsEditing(false);
+        setEditId(null);
+        setCurrentRequisition(createEmptyRequisition());
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to save requisition", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Edit requisition
+  const handleEdit = (req: Requisition) => {
+    setCurrentRequisition(req);
+    setEditId(req.id!);
+    setIsEditing(true);
+    setView("form");
+  };
+
+  // New requisition
+  const handleNew = () => {
+    setCurrentRequisition(createEmptyRequisition());
+    setEditId(null);
+    setIsEditing(true);
+    setView("form");
+  };
+
+  // View requisition (read-only)
+  const handleView = (req: Requisition) => {
+    setCurrentRequisition(req);
+    setEditId(req.id!);
+    setIsEditing(false);
+    setView("form");
+  };
+
+  // Delete requisition
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/requisitions/${deleteId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Deleted", description: "Requisition has been deleted" });
+        await fetchRequisitions();
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+    }
+  };
+
+  // PDF Download
+  const handlePDFDownload = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const html = generatePrintHTML(currentRequisition);
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  // Print
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const html = generatePrintHTML(currentRequisition, true);
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  // Generate print HTML
+  const generatePrintHTML = (req: Requisition, isPrint = false) => {
+    const selectedItems = req.items.filter((i) => i.selected || i.qty > 0);
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Equipment Requisition Form</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1a1a1a; font-size: 13px; }
+    .container { max-width: 900px; margin: 0 auto; border: 2px solid #333; padding: 30px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 800; letter-spacing: 2px; margin-bottom: 4px; }
+    .header h2 { font-size: 14px; font-weight: 600; color: #444; }
+    .top-section { display: flex; gap: 20px; margin-bottom: 20px; }
+    .left-col { flex: 1; }
+    .right-col { flex: 1; }
+    .field { margin-bottom: 8px; }
+    .field-label { font-weight: 600; font-size: 12px; color: #555; }
+    .field-value { font-size: 13px; }
+    .applicant-table { width: 100%; border-collapse: collapse; }
+    .applicant-table td { border: 1px solid #999; padding: 6px 10px; font-size: 12px; }
+    .applicant-table td:first-child { font-weight: 600; background: #f5f5f5; width: 40%; }
+    .category-bar { display: flex; gap: 15px; padding: 10px; border: 1px solid #ccc; margin-bottom: 20px; flex-wrap: wrap; background: #fafafa; }
+    .category-item { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+    .category-item input[type="checkbox"] { transform: scale(0.9); }
+    .equipment-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .equipment-table th { border: 1px solid #333; padding: 8px; background: #e8e8e8; font-size: 12px; font-weight: 700; text-align: center; }
+    .equipment-table td { border: 1px solid #999; padding: 6px 8px; font-size: 12px; }
+    .equipment-table tr:nth-child(even) { background: #fafafa; }
+    .total-row { background: #e0e7ff !important; font-weight: 700; }
+    .reason-section { margin-bottom: 25px; }
+    .reason-section h3 { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+    .reason-text { border: 1px solid #ccc; padding: 10px; min-height: 50px; background: #fafafa; }
+    .signature-section { display: flex; justify-content: space-between; margin-top: 30px; }
+    .signature-block { text-align: center; flex: 1; }
+    .signature-line { border-top: 1px dashed #666; margin: 40px 20px 8px 20px; }
+    .signature-label { font-size: 12px; font-weight: 600; }
+    .date-line { margin-top: 5px; font-size: 11px; color: #888; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-draft { background: #fef3c7; color: #92400e; }
+    .badge-submitted { background: #dbeafe; color: #1e40af; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+    @media print { body { padding: 0; } .container { border: none; padding: 10px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>EQUIPMENT REQUISITION FORM</h1>
+      <h2>${req.department}</h2>
+    </div>
+
+    <div class="top-section">
+      <div class="left-col">
+        <div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
+        <div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+        <div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
+        <div class="field"><span class="field-value">${req.department}</span></div>
+        <div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
+      </div>
+      <div class="right-col">
+        <table class="applicant-table">
+          <tr><td>Applicant Name</td><td>${req.applicantName}</td></tr>
+          <tr><td>Applicant Department</td><td>${req.applicantDepartment}</td></tr>
+          <tr><td>Employee ID</td><td>${req.employeeId}</td></tr>
+          <tr><td>Branch Name</td><td>${req.branchName}</td></tr>
+          <tr><td>Address</td><td>${req.applicantAddress}</td></tr>
+          <tr><td>Contact</td><td>${req.contact}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="category-bar">
+      ${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+    </div>
+
+    <table class="equipment-table">
+      <thead>
+        <tr>
+          <th style="width:40px">SL</th>
+          <th style="width:50px">Select</th>
+          <th>EQUIPMENT NAME</th>
+          <th>DESCRIPTION</th>
+          <th style="width:60px">QTY</th>
+          <th style="width:90px">CONDITION</th>
+          <th style="width:100px">APPROX PRICE</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${req.items.map((item) => `
+          <tr>
+            <td style="text-align:center">${item.sl}</td>
+            <td style="text-align:center"><input type="checkbox" ${item.selected ? "checked" : ""} disabled /></td>
+            <td>${item.equipmentName}</td>
+            <td>${item.description}</td>
+            <td style="text-align:center">${item.qty || "-"}</td>
+            <td style="text-align:center">${item.condition || "-"}</td>
+            <td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+          </tr>
+        `).join("")}
+        <tr class="total-row">
+          <td colspan="6" style="text-align:right; padding-right:15px">Total Amount:</td>
+          <td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="reason-section">
+      <h3>PLEASE WRITE A REASON :</h3>
+      <div class="reason-text">${req.reason || "-"}</div>
+    </div>
+
+    <div class="signature-section">
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Applicant</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Manager / In-Charge</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Recommend by</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Authority</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  // Status badge helper
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+      Approved: "bg-green-100 text-green-800 border-green-300",
+      Rejected: "bg-red-100 text-red-800 border-red-300",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+  };
+
+  // Filter requisitions by search
+  const filteredRequisitions = requisitions.filter(
+    (r) =>
+      r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // ===================== LIST VIEW =====================
+  if (view === "list") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        {/* Header */}
+        <div className="bg-white border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+                <p className="text-xs text-slate-500">Information and Technology Department</p>
+              </div>
+            </div>
+            <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+              <Plus className="w-4 h-4" /> New Requisition
+            </Button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Search */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search by name, employee ID, organization..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+          </div>
+
+          {/* Table */}
+          {filteredRequisitions.length === 0 ? (
+            <Card className="text-center py-16">
+              <CardContent>
+                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+                  <Plus className="w-4 h-4" /> New Requisition
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRequisitions.map((req, idx) => (
+                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+                        <td className="p-3 text-sm">{idx + 1}</td>
+                        <td className="p-3 text-sm">{req.date}</td>
+                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+                        <td className="p-3 text-sm">{req.category}</td>
+                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+                        <td className="p-3">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0">
+                              <FileText className="w-4 h-4 text-slate-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0">
+                              <Edit3 className="w-4 h-4 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setDeleteId(req.id!);
+                                setDeleteDialogOpen(true);
+                              }}
+                              title="Delete"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Requisition</DialogTitle>
+              <DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // ===================== FORM VIEW =====================
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <Separator orientation="vertical" className="h-6" />
+            <h2 className="text-sm font-semibold text-slate-700">
+              {isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {isEditing && (
+              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+              </Button>
+            )}
+            {!isEditing && editId && (
+              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500">
+                <Edit3 className="w-4 h-4" /> Edit
+              </Button>
+            )}
+            <Button variant="outline" onClick={handlePDFDownload} className="gap-2">
+              <FileDown className="w-4 h-4" /> PDF
+            </Button>
+            <Button variant="outline" onClick={handlePrint} className="gap-2">
+              <Printer className="w-4 h-4" /> Print
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Form Content */}
+      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+        <Card className="shadow-md border-slate-300">
+          <CardContent className="p-6">
+            {/* Title */}
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+            </div>
+
+            {/* Top Section: Left Info + Right Applicant Table */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Left Column */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+                  {isEditing ? (
+                    <Input
+                      value={currentRequisition.date}
+                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, date: e.target.value })}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+                  )}
+                </div>
+                <div className="pt-2">
+                  <p className="text-xs font-semibold text-slate-500">To,</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+                  {isEditing ? (
+                    <Input
+                      value={currentRequisition.organizationName}
+                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+                  {isEditing ? (
+                    <Input
+                      value={currentRequisition.department}
+                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+                  {isEditing ? (
+                    <Textarea
+                      value={currentRequisition.address}
+                      onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })}
+                      className="mt-1"
+                      rows={2}
+                    />
+                  ) : (
+                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column - Applicant Table */}
+              <div className="border border-slate-300 rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.applicantName}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })}
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <span>{currentRequisition.applicantName}</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.applicantDepartment}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: e.target.value })}
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <span>{currentRequisition.applicantDepartment}</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.employeeId}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })}
+                            className="h-7 text-sm font-mono"
+                          />
+                        ) : (
+                          <span className="font-mono">{currentRequisition.employeeId}</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.branchName}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, branchName: e.target.value })}
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <span>{currentRequisition.branchName}</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.applicantAddress}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantAddress: e.target.value })}
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <span>{currentRequisition.applicantAddress}</span>
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={currentRequisition.contact}
+                            onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })}
+                            className="h-7 text-sm"
+                          />
+                        ) : (
+                          <span>{currentRequisition.contact}</span>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Category Selection Bar */}
+            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+              <div className="flex flex-wrap gap-4 items-center">
+                {CATEGORIES.map((cat) => (
+                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={currentRequisition.category === cat}
+                      onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })}
+                      disabled={!isEditing}
+                    />
+                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Equipment Table */}
+            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-200 border-b border-slate-400">
+                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+                    <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
+                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentRequisition.items.map((item, index) => (
+                    <tr key={index} className={`border-b border-slate-200 ${item.selected ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+                      <td className="p-2 text-center">
+                        <Checkbox
+                          checked={item.selected}
+                          onCheckedChange={(checked) => isEditing && updateItem(index, "selected", !!checked)}
+                          disabled={!isEditing}
+                        />
+                      </td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={item.equipmentName}
+                            onChange={(e) => updateItem(index, "equipmentName", e.target.value)}
+                            className="h-7 text-xs"
+                          />
+                        ) : (
+                          <span className="text-xs">{item.equipmentName || "-"}</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            value={item.description}
+                            onChange={(e) => updateItem(index, "description", e.target.value)}
+                            className="h-7 text-xs"
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span className="text-xs">{item.description || "—"}</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={item.qty || ""}
+                            onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-center"
+                            min={0}
+                          />
+                        ) : (
+                          <span className="text-xs text-center block">{item.qty || "—"}</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Select
+                            value={item.condition}
+                            onValueChange={(val) => updateItem(index, "condition", val)}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CONDITIONS.map((c) => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {isEditing ? (
+                          <Input
+                            type="number"
+                            value={item.approxPrice || ""}
+                            onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)}
+                            className="h-7 text-xs text-right"
+                            min={0}
+                          />
+                        ) : (
+                          <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>
+                        )}
+                      </td>
+                      {isEditing && (
+                        <td className="p-1 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeRow(index)}
+                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {/* Total Row */}
+                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">
+                      Total Amount:
+                    </td>
+                    <td className="p-2 text-right font-bold text-sm">
+                      ৳{currentRequisition.totalAmount.toLocaleString()}
+                    </td>
+                    {isEditing && <td></td>}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add Row Button */}
+            {isEditing && (
+              <div className="mb-6">
+                <Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs">
+                  <Plus className="w-3 h-3" /> Add Row
+                </Button>
+              </div>
+            )}
+
+            {/* Reason Section */}
+            <div className="mb-8">
+              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+              {isEditing ? (
+                <Textarea
+                  value={currentRequisition.reason}
+                  onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })}
+                  className="min-h-[80px]"
+                  placeholder="Write your reason here..."
+                />
+              ) : (
+                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">
+                  {currentRequisition.reason || "—"}
+                </div>
+              )}
+            </div>
+
+            {/* Status (when editing existing) */}
+            {editId && (
+              <div className="mb-8">
+                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+                {isEditing ? (
+                  <Select
+                    value={currentRequisition.status}
+                    onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}
+                  >
+                    <SelectTrigger className="mt-1 w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Submitted">Submitted</SelectItem>
+                      <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>
+                      {currentRequisition.status}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Signature Section */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+                <div key={role} className="text-center">
+                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2">
+                    <p className="text-xs font-semibold text-slate-600">{role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
