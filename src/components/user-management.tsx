@@ -35,6 +35,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  password: string;
   phone: string;
   employeeId: string;
   department: string;
@@ -74,6 +75,7 @@ const emptyUser = (): User => ({
   id: "",
   name: "",
   email: "",
+  password: "123456",
   phone: "",
   employeeId: "",
   department: "",
@@ -260,6 +262,16 @@ export default function UserManagement() {
                     <Input type="email" value={currentUser.email} onChange={(e) => setCurrentUser({ ...currentUser, email: e.target.value })} className="mt-1" placeholder="Enter email address" />
                   ) : (
                     <p className="mt-1 text-sm font-medium text-slate-800">{currentUser.email}</p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase">Password</label>
+                  {isEditing ? (
+                    <Input type="text" value={currentUser.password} onChange={(e) => setCurrentUser({ ...currentUser, password: e.target.value })} className="mt-1" placeholder="Enter password (default: 123456)" />
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-800">••••••</p>
                   )}
                 </div>
 

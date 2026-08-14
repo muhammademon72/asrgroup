@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { LogOut, UserCircle } from "lucide-react";
 import {
   Save,
   Edit3,
@@ -49,6 +50,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import UserManagement from "@/components/user-management";
+import LoginPage from "@/components/login-page";
 
 // Types
 interface RequisitionItem {
@@ -358,7 +360,19 @@ function DatePickerWithAutoClose({
 }
 
 // ==================== Main Component ====================
+interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  branch: string;
+  employeeId: string;
+  status: string;
+}
+
 export default function EquipmentRequisitionSystem() {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [mainTab, setMainTab] = useState<"requisition" | "users">("requisition");
   const [view, setView] = useState<"list" | "form">("list");
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -547,6 +561,11 @@ ${req.items.map((item) => `<tr>
     r.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // ===================== LOGIN GUARD =====================
+  if (!authUser) {
+    return <LoginPage onLogin={(user) => setAuthUser(user as AuthUser)} />;
+  }
+
   // ===================== LIST VIEW =====================
   if (view === "list") {
     return (
@@ -583,6 +602,19 @@ ${req.items.map((item) => `<tr>
                   <Plus className="w-4 h-4" /> New Requisition
                 </Button>
               )}
+              {/* User Info & Logout */}
+              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+                <div className="flex items-center gap-2">
+                  <UserCircle className="w-5 h-5 text-slate-500" />
+                  <div className="hidden sm:block">
+                    <p className="text-xs font-medium text-slate-700">{authUser.name}</p>
+                    <p className="text-[10px] text-slate-400">{authUser.role}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600">
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -686,6 +718,14 @@ ${req.items.map((item) => `<tr>
             )}
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+            {/* User Info & Logout */}
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
+              <UserCircle className="w-4 h-4 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+              <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600 h-7 w-7 p-0">
+                <LogOut className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
