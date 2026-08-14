@@ -48,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import UserManagement from "@/components/user-management";
 
 // Types
 interface RequisitionItem {
@@ -358,6 +359,7 @@ function DatePickerWithAutoClose({
 
 // ==================== Main Component ====================
 export default function EquipmentRequisitionSystem() {
+  const [mainTab, setMainTab] = useState<"requisition" | "users">("requisition");
   const [view, setView] = useState<"list" | "form">("list");
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
@@ -560,12 +562,35 @@ ${req.items.map((item) => `<tr>
                 <p className="text-xs text-slate-500">Information and Technology Department</p>
               </div>
             </div>
-            <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
-              <Plus className="w-4 h-4" /> New Requisition
-            </Button>
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-slate-100 rounded-lg p-1 mr-3">
+                <button
+                  onClick={() => setMainTab("requisition")}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "requisition" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Requisition
+                </button>
+                <button
+                  onClick={() => setMainTab("users")}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Users
+                </button>
+              </div>
+              {mainTab === "requisition" && (
+                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+                  <Plus className="w-4 h-4" /> New Requisition
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 py-6">
+          {mainTab === "users" ? (
+            <UserManagement />
+          ) : (
+          <>
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -623,6 +648,8 @@ ${req.items.map((item) => `<tr>
                 </table>
               </div>
             </Card>
+          )}
+          </>
           )}
         </div>
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
