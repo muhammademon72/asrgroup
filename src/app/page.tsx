@@ -114,7 +114,7 @@ const createEmptyRequisition = (): Requisition => ({
   date: new Date().toLocaleDateString("en-GB"),
   organizationName: "ASR GROUP",
   department: "Information and Technology Department",
-  address: "House: 282/B, Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+  address: "Head Office : Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
   applicantName: "",
   applicantDepartment: "Information Technology",
   employeeId: "",
