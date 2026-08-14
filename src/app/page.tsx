@@ -759,7 +759,7 @@ ${req.items.map((item) => `<tr>
                 <div className="pt-2"><p className="text-xs font-semibold text-slate-500">To,</p></div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
-                  {isEditing ? (
+                  {isEditing && authUser?.role !== "User" ? (
                     <Input value={currentRequisition.organizationName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })} className="mt-1" />
                   ) : (
                     <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
@@ -767,7 +767,7 @@ ${req.items.map((item) => `<tr>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
-                  {isEditing ? (
+                  {isEditing && authUser?.role !== "User" ? (
                     <Input value={currentRequisition.department} onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })} className="mt-1" />
                   ) : (
                     <p className="text-sm mt-1">{currentRequisition.department}</p>
@@ -775,7 +775,7 @@ ${req.items.map((item) => `<tr>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
-                  {isEditing ? (
+                  {isEditing && authUser?.role !== "User" ? (
                     <Textarea value={currentRequisition.address} onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })} className="mt-1" rows={2} />
                   ) : (
                     <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
