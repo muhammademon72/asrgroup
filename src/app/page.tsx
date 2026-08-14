@@ -454,34 +454,35 @@ export default function EquipmentRequisitionSystem() {
   const generatePrintHTML = (req: Requisition) => `<!DOCTYPE html>
 <html><head><title>Equipment Requisition Form</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px;color:#1a1a1a;font-size:13px}
-.container{max-width:900px;margin:0 auto;border:2px solid #333;padding:30px}
-.header{text-align:center;margin-bottom:20px}
-.header h1{font-size:22px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
-.header h2{font-size:14px;font-weight:600;color:#444}
-.top-section{display:flex;gap:20px;margin-bottom:20px}
+@page{size:A4;margin:10mm}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a1a1a;font-size:12px}
+.container{max-width:190mm;margin:0 auto;border:2px solid #333;padding:15px}
+.header{text-align:center;margin-bottom:15px}
+.header h1{font-size:20px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+.header h2{font-size:13px;font-weight:600;color:#444}
+.top-section{display:flex;gap:15px;margin-bottom:15px}
 .left-col{flex:1}.right-col{flex:1}
-.field{margin-bottom:8px}
-.field-label{font-weight:600;font-size:12px;color:#555}
-.field-value{font-size:13px}
+.field{margin-bottom:6px}
+.field-label{font-weight:600;font-size:11px;color:#555}
+.field-value{font-size:12px}
 .applicant-table{width:100%;border-collapse:collapse}
-.applicant-table td{border:1px solid #999;padding:6px 10px;font-size:12px}
+.applicant-table td{border:1px solid #999;padding:5px 8px;font-size:11px}
 .applicant-table td:first-child{font-weight:600;background:#f5f5f5;width:40%}
-.category-bar{display:flex;gap:15px;padding:10px;border:1px solid #ccc;margin-bottom:20px;flex-wrap:wrap;background:#fafafa}
-.category-item{display:flex;align-items:center;gap:4px;font-size:12px}
-.category-item input[type="checkbox"]{transform:scale(0.9)}
-.equipment-table{width:100%;border-collapse:collapse;margin-bottom:20px}
-.equipment-table th{border:1px solid #333;padding:8px;background:#e8e8e8;font-size:12px;font-weight:700;text-align:center}
-.equipment-table td{border:1px solid #999;padding:6px 8px;font-size:12px}
+.category-bar{display:flex;gap:12px;padding:8px;border:1px solid #ccc;margin-bottom:15px;flex-wrap:wrap;background:#fafafa}
+.category-item{display:flex;align-items:center;gap:4px;font-size:11px}
+.category-item input[type="checkbox"]{transform:scale(0.85)}
+.equipment-table{width:100%;border-collapse:collapse;margin-bottom:15px}
+.equipment-table th{border:1px solid #333;padding:6px;background:#e8e8e8;font-size:11px;font-weight:700;text-align:center}
+.equipment-table td{border:1px solid #999;padding:5px 6px;font-size:11px}
 .equipment-table tr:nth-child(even){background:#fafafa}
 .total-row{background:#e0e7ff!important;font-weight:700}
-.reason-section{margin-bottom:25px}
-.reason-section h3{font-size:13px;font-weight:700;margin-bottom:5px}
-.reason-text{border:1px solid #ccc;padding:10px;min-height:50px;background:#fafafa}
-.signature-section{display:flex;justify-content:space-between;margin-top:30px}
+.reason-section{margin-bottom:20px}
+.reason-section h3{font-size:12px;font-weight:700;margin-bottom:4px}
+.reason-text{border:1px solid #ccc;padding:8px;min-height:40px;background:#fafafa;font-size:11px}
+.signature-section{display:flex;justify-content:space-between;margin-top:20px}
 .signature-block{text-align:center;flex:1}
-.signature-line{border-top:1px dashed #666;margin:40px 20px 8px 20px}
-.signature-label{font-size:12px;font-weight:600}
+.signature-line{border-top:1px dashed #666;margin:30px 15px 6px 15px}
+.signature-label{font-size:11px;font-weight:600}
 @media print{body{padding:0}.container{border:none;padding:10px}}
 </style></head><body>
 <div class="container">
