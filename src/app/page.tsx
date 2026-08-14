@@ -507,16 +507,17 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px;color:
 ${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
 </div>
 <table class="equipment-table"><thead><tr>
-<th style="width:40px">SL</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
+<th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
 </tr></thead><tbody>
 ${req.items.map((item) => `<tr>
 <td style="text-align:center">${item.sl}</td>
+<td style="text-align:center">${item.selected ? "✓" : ""}</td>
 <td>${item.equipmentName}</td><td>${item.description}</td>
 <td style="text-align:center">${item.qty || "-"}</td>
 <td style="text-align:center">${item.condition || "-"}</td>
 <td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
 </tr>`).join("")}
-<tr class="total-row"><td colspan="5" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
+<tr class="total-row"><td colspan="6" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
 </tbody></table>
 <div class="reason-section"><h3>PLEASE WRITE A REASON :</h3><div class="reason-text">${req.reason || "-"}</div></div>
 <div class="signature-section">
@@ -820,6 +821,7 @@ ${req.items.map((item) => `<tr>
                 <thead>
                   <tr className="bg-slate-200 border-b border-slate-400">
                     <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
                     <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
                     <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
                     <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
@@ -832,6 +834,7 @@ ${req.items.map((item) => `<tr>
                   {currentRequisition.items.map((item, index) => (
                     <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
                       <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+                      <td className="p-2 text-center"><Checkbox checked={item.selected} onCheckedChange={(checked) => updateItem(index, "selected", !!checked)} /></td>
                       <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
                       <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
                       <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-7 text-xs text-center" min={0} /> : <span className="text-xs text-center block">{item.qty || "—"}</span>}</td>
@@ -852,7 +855,7 @@ ${req.items.map((item) => `<tr>
                     </tr>
                   ))}
                   <tr className="bg-indigo-100 border-t-2 border-slate-400">
-                    <td colSpan={isEditing ? 5 : 4} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
+                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
                     <td className="p-2 text-right font-bold text-sm">৳{currentRequisition.totalAmount.toLocaleString()}</td>
                     {isEditing && <td></td>}
                   </tr>
