@@ -1,10 +1,17 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
-// GET all requisitions
-export async function GET() {
+// GET all requisitions (optionally filter by createdByEmail)
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url)
+    const createdByEmail = url.searchParams.get('createdByEmail')
+    const where: any = {}
+    if (createdByEmail) {
+      where.createdByEmail = createdByEmail
+    }
     const requisitions = await db.requisition.findMany({
+      where,
       include: { items: { orderBy: { sl: 'asc' } } },
       orderBy: { createdAt: 'desc' },
     })
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest) {
         reason: requisitionData.reason,
         totalAmount: requisitionData.totalAmount,
         status: requisitionData.status || 'Draft',
+        createdByEmail: requisitionData.createdByEmail || '',
         items: {
           create: items.map((item: { sl: number; equipmentName: string; description: string; qty: number; condition: string; approxPrice: number; selected: boolean }) => ({
             sl: item.sl,

@@ -23,6 +23,7 @@ model Requisition {
   reason              String
   totalAmount         Float    @default(0)
   status              String   @default("Draft")
+  createdByEmail      String   @default("")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

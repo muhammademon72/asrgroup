@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         reason: requisitionData.reason,
         totalAmount: requisitionData.totalAmount,
         status: requisitionData.status,
+        createdByEmail: requisitionData.createdByEmail,
         items: {
           create: items.map((item: { sl: number; equipmentName: string; description: string; qty: number; condition: string; approxPrice: number; selected: boolean }) => ({
             sl: item.sl,

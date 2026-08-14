@@ -80,6 +80,7 @@ interface Requisition {
   reason: string;
   totalAmount: number;
   status: string;
+  createdByEmail: string;
   items: RequisitionItem[];
   createdAt?: string;
   updatedAt?: string;
@@ -128,6 +129,7 @@ const createEmptyRequisition = (): Requisition => ({
   reason: "",
   totalAmount: 0,
   status: "Draft",
+  createdByEmail: "",
   items: getDefaultItems(),
 });
 
@@ -388,12 +390,17 @@ export default function EquipmentRequisitionSystem() {
 
   const fetchRequisitions = useCallback(async () => {
     try {
-      const res = await fetch("/api/requisitions");
+      let url = "/api/requisitions";
+      // If User role, only fetch their own requisitions
+      if (authUser && authUser.role === "User" && authUser.email) {
+        url += `?createdByEmail=${encodeURIComponent(authUser.email)}`;
+      }
+      const res = await fetch(url);
       if (res.ok) setRequisitions(await res.json());
     } catch {
       toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
     }
-  }, [toast]);
+  }, [toast, authUser]);
 
   useEffect(() => { fetchRequisitions(); }, [fetchRequisitions]);
 
@@ -430,7 +437,7 @@ export default function EquipmentRequisitionSystem() {
     try {
       const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
       const method = editId ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentRequisition) });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...currentRequisition, createdByEmail: authUser?.email || "" }) });
       if (res.ok) {
         toast({ title: editId ? "Updated Successfully" : "Saved Successfully", description: `Requisition has been ${editId ? "updated" : "saved"}` });
         await fetchRequisitions();
@@ -590,7 +597,7 @@ ${req.items.map((item) => `<tr>
                 >
                   Requisition
                 </button>
-                {authUser.role === "Admin" && (
+                {authUser.role !== "User" && (
                   <button
                     onClick={() => setMainTab("users")}
                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
