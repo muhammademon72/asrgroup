@@ -92,7 +92,7 @@ interface DropdownOption {
 const DEFAULT_EQUIPMENT_NAMES = [
   "Processor", "Motherboard", "Ram", "SSD Drive", "Power Supply",
   "CPU Casing", "Monitor", "Mouse", "Keyboard", "UPS",
-  "Wi-Fi Router", "Network Switch", "CCTV Camera", "Printer", "Toner / Cartridge",
+  "Wi-Fi Router", "CCTV Camera", "Printer", "Toner / Cartridge",
 ];
 
 const CATEGORIES = ["Desktop", "Laptop", "Network", "CCTV", "PC-Update", "Others Accessories", "Repairing"];

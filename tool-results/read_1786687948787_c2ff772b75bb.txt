@@ -1,0 +1,911 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef } from "react";
+     4→import {
+     5→  Save,
+     6→  Edit3,
+     7→  Trash2,
+     8→  FileDown,
+     9→  Printer,
+    10→  Plus,
+    11→  ArrowLeft,
+    12→  Search,
+    13→  X,
+    14→  Loader2,
+    15→  FileText,
+    16→  Settings2,
+    17→  Pencil,
+    18→  Check,
+    19→  CalendarIcon,
+    20→} from "lucide-react";
+    21→import { format } from "date-fns";
+    22→import { Button } from "@/components/ui/button";
+    23→import { Input } from "@/components/ui/input";
+    24→import { Textarea } from "@/components/ui/textarea";
+    25→import { Checkbox } from "@/components/ui/checkbox";
+    26→import {
+    27→  Select,
+    28→  SelectContent,
+    29→  SelectItem,
+    30→  SelectTrigger,
+    31→  SelectValue,
+    32→} from "@/components/ui/select";
+    33→import {
+    34→  Dialog,
+    35→  DialogContent,
+    36→  DialogDescription,
+    37→  DialogFooter,
+    38→  DialogHeader,
+    39→  DialogTitle,
+    40→} from "@/components/ui/dialog";
+    41→import {
+    42→  Popover,
+    43→  PopoverContent,
+    44→  PopoverTrigger,
+    45→} from "@/components/ui/popover";
+    46→import { Card, CardContent } from "@/components/ui/card";
+    47→import { Badge } from "@/components/ui/badge";
+    48→import { Separator } from "@/components/ui/separator";
+    49→import { Calendar } from "@/components/ui/calendar";
+    50→import { useToast } from "@/hooks/use-toast";
+    51→
+    52→// Types
+    53→interface RequisitionItem {
+    54→  id?: string;
+    55→  sl: number;
+    56→  equipmentName: string;
+    57→  description: string;
+    58→  qty: number;
+    59→  condition: string;
+    60→  approxPrice: number;
+    61→  selected: boolean;
+    62→}
+    63→
+    64→interface Requisition {
+    65→  id?: string;
+    66→  date: string;
+    67→  organizationName: string;
+    68→  department: string;
+    69→  address: string;
+    70→  applicantName: string;
+    71→  applicantDepartment: string;
+    72→  employeeId: string;
+    73→  branchName: string;
+    74→  applicantAddress: string;
+    75→  contact: string;
+    76→  category: string;
+    77→  reason: string;
+    78→  totalAmount: number;
+    79→  status: string;
+    80→  items: RequisitionItem[];
+    81→  createdAt?: string;
+    82→  updatedAt?: string;
+    83→}
+    84→
+    85→interface DropdownOption {
+    86→  id: string;
+    87→  type: string;
+    88→  value: string;
+    89→}
+    90→
+    91→// Default equipment list
+    92→const DEFAULT_EQUIPMENT_NAMES = [
+    93→  "Processor", "Motherboard", "Ram", "SSD Drive", "Power Supply",
+    94→  "CPU Casing", "Monitor", "Mouse", "Keyboard", "UPS",
+    95→  "Wi-Fi Router", "Network Switch", "CCTV Camera", "Printer", "Toner / Cartridge",
+    96→];
+    97→
+    98→const CATEGORIES = ["Desktop", "Laptop", "Network", "CCTV", "PC-Update", "Others Accessories", "Repairing"];
+    99→const CONDITIONS = ["New", "Used", "Refurbished"];
+   100→
+   101→const emptyItem = (sl: number): RequisitionItem => ({
+   102→  sl, equipmentName: "", description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   103→});
+   104→
+   105→const getDefaultItems = (): RequisitionItem[] => {
+   106→  const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
+   107→    sl: i + 1, equipmentName: name, description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   108→  }));
+   109→  for (let i = 0; i < 5; i++) items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+   110→  return items;
+   111→};
+   112→
+   113→const createEmptyRequisition = (): Requisition => ({
+   114→  date: new Date().toLocaleDateString("en-GB"),
+   115→  organizationName: "ASR GROUP",
+   116→  department: "Information and Technology Department",
+   117→  address: "Head Office : Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+   118→  applicantName: "",
+   119→  applicantDepartment: "Information Technology",
+   120→  employeeId: "",
+   121→  branchName: "Head Office",
+   122→  applicantAddress: "Elephant Road",
+   123→  contact: "",
+   124→  category: "Others Accessories",
+   125→  reason: "",
+   126→  totalAmount: 0,
+   127→  status: "Draft",
+   128→  items: getDefaultItems(),
+   129→});
+   130→
+   131→// ==================== DropdownWithManage Component ====================
+   132→function DropdownWithManage({
+   133→  label,
+   134→  type,
+   135→  value,
+   136→  onChange,
+   137→  disabled,
+   138→}: {
+   139→  label: string;
+   140→  type: "department" | "branch" | "address";
+   141→  value: string;
+   142→  onChange: (val: string) => void;
+   143→  disabled: boolean;
+   144→}) {
+   145→  const [options, setOptions] = useState<DropdownOption[]>([]);
+   146→  const [manageOpen, setManageOpen] = useState(false);
+   147→  const [newOptionValue, setNewOptionValue] = useState("");
+   148→  const [editingId, setEditingId] = useState<string | null>(null);
+   149→  const [editingValue, setEditingValue] = useState("");
+   150→  const [loading, setLoading] = useState(false);
+   151→  const { toast } = useToast();
+   152→
+   153→  const fetchOptions = useCallback(async () => {
+   154→    try {
+   155→      const res = await fetch(`/api/dropdown-options?type=${type}`);
+   156→      if (res.ok) setOptions(await res.json());
+   157→    } catch { /* ignore */ }
+   158→  }, [type]);
+   159→
+   160→  useEffect(() => { fetchOptions(); }, [fetchOptions]);
+   161→
+   162→  const handleAdd = async () => {
+   163→    if (!newOptionValue.trim()) return;
+   164→    setLoading(true);
+   165→    try {
+   166→      const res = await fetch("/api/dropdown-options", {
+   167→        method: "POST",
+   168→        headers: { "Content-Type": "application/json" },
+   169→        body: JSON.stringify({ type, value: newOptionValue.trim() }),
+   170→      });
+   171→      if (res.ok) {
+   172→        toast({ title: "Added", description: `"${newOptionValue.trim()}" added to ${label}` });
+   173→        setNewOptionValue("");
+   174→        await fetchOptions();
+   175→      } else {
+   176→        const err = await res.json();
+   177→        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+   178→      }
+   179→    } catch {
+   180→      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+   181→    } finally { setLoading(false); }
+   182→  };
+   183→
+   184→  const handleUpdate = async (id: string) => {
+   185→    if (!editingValue.trim()) return;
+   186→    setLoading(true);
+   187→    try {
+   188→      const res = await fetch(`/api/dropdown-options/${id}`, {
+   189→        method: "PUT",
+   190→        headers: { "Content-Type": "application/json" },
+   191→        body: JSON.stringify({ value: editingValue.trim() }),
+   192→      });
+   193→      if (res.ok) {
+   194→        toast({ title: "Updated", description: "Option updated successfully" });
+   195→        setEditingId(null);
+   196→        setEditingValue("");
+   197→        await fetchOptions();
+   198→      } else {
+   199→        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   200→      }
+   201→    } catch {
+   202→      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   203→    } finally { setLoading(false); }
+   204→  };
+   205→
+   206→  const handleDelete = async (id: string, val: string) => {
+   207→    setLoading(true);
+   208→    try {
+   209→      const res = await fetch(`/api/dropdown-options/${id}`, { method: "DELETE" });
+   210→      if (res.ok) {
+   211→        toast({ title: "Deleted", description: `"${val}" removed from ${label}` });
+   212→        if (value === val) onChange("");
+   213→        await fetchOptions();
+   214→      }
+   215→    } catch {
+   216→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   217→    } finally { setLoading(false); }
+   218→  };
+   219→
+   220→  return (
+   221→    <div className="flex items-center gap-1">
+   222→      <Select value={value} onValueChange={onChange} disabled={disabled}>
+   223→        <SelectTrigger className="h-7 text-xs flex-1">
+   224→          <SelectValue placeholder={`Select ${label}...`} />
+   225→        </SelectTrigger>
+   226→        <SelectContent>
+   227→          {options.map((opt) => (
+   228→            <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+   229→          ))}
+   230→        </SelectContent>
+   231→      </Select>
+   232→      {!disabled && (
+   233→        <Popover open={manageOpen} onOpenChange={setManageOpen}>
+   234→          <PopoverTrigger asChild>
+   235→            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700" title="Manage options">
+   236→              <Settings2 className="w-3.5 h-3.5" />
+   237→            </Button>
+   238→          </PopoverTrigger>
+   239→          <PopoverContent className="w-72 p-0" align="end">
+   240→            <div className="p-3 border-b bg-slate-50">
+   241→              <h4 className="text-sm font-semibold text-slate-700">Manage {label}</h4>
+   242→              <p className="text-xs text-slate-400 mt-0.5">Add, edit or delete options</p>
+   243→            </div>
+   244→            <div className="p-3 border-b">
+   245→              <div className="flex gap-1.5">
+   246→                <Input
+   247→                  placeholder={`New ${label.toLowerCase()}...`}
+   248→                  value={newOptionValue}
+   249→                  onChange={(e) => setNewOptionValue(e.target.value)}
+   250→                  className="h-7 text-xs"
+   251→                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+   252→                />
+   253→                <Button size="sm" onClick={handleAdd} disabled={loading || !newOptionValue.trim()} className="h-7 px-2 shrink-0 bg-slate-700 hover:bg-slate-600">
+   254→                  <Plus className="w-3.5 h-3.5" />
+   255→                </Button>
+   256→              </div>
+   257→            </div>
+   258→            <div className="max-h-48 overflow-y-auto">
+   259→              {options.length === 0 ? (
+   260→                <p className="p-3 text-xs text-slate-400 text-center">No options yet</p>
+   261→              ) : (
+   262→                options.map((opt) => (
+   263→                  <div key={opt.id} className="flex items-center gap-1 px-3 py-1.5 border-b last:border-b-0 hover:bg-slate-50 group">
+   264→                    {editingId === opt.id ? (
+   265→                      <>
+   266→                        <Input
+   267→                          value={editingValue}
+   268→                          onChange={(e) => setEditingValue(e.target.value)}
+   269→                          className="h-6 text-xs flex-1"
+   270→                          onKeyDown={(e) => e.key === "Enter" && handleUpdate(opt.id)}
+   271→                          autoFocus
+   272→                        />
+   273→                        <Button size="sm" onClick={() => handleUpdate(opt.id)} disabled={loading} className="h-6 w-6 p-0 shrink-0 text-green-600 hover:text-green-700">
+   274→                          <Check className="w-3 h-3" />
+   275→                        </Button>
+   276→                        <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(""); }} className="h-6 w-6 p-0 shrink-0">
+   277→                          <X className="w-3 h-3" />
+   278→                        </Button>
+   279→                      </>
+   280→                    ) : (
+   281→                      <>
+   282→                        <span className="text-xs flex-1 truncate">{opt.value}</span>
+   283→                        <Button
+   284→                          size="sm" variant="ghost"
+   285→                          onClick={() => { setEditingId(opt.id); setEditingValue(opt.value); }}
+   286→                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700"
+   287→                        >
+   288→                          <Pencil className="w-3 h-3" />
+   289→                        </Button>
+   290→                        <Button
+   291→                          size="sm" variant="ghost"
+   292→                          onClick={() => handleDelete(opt.id, opt.value)}
+   293→                          disabled={loading}
+   294→                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
+   295→                        >
+   296→                          <Trash2 className="w-3 h-3" />
+   297→                        </Button>
+   298→                      </>
+   299→                    )}
+   300→                  </div>
+   301→                ))
+   302→              )}
+   303→            </div>
+   304→          </PopoverContent>
+   305→        </Popover>
+   306→      )}
+   307→    </div>
+   308→  );
+   309→}
+   310→
+   311→// ==================== DatePickerWithAutoClose Component ====================
+   312→function DatePickerWithAutoClose({
+   313→  value,
+   314→  onChange,
+   315→}: {
+   316→  value: string;
+   317→  onChange: (val: string) => void;
+   318→}) {
+   319→  const [open, setOpen] = useState(false);
+   320→
+   321→  const parseDate = (dateStr: string): Date | undefined => {
+   322→    if (!dateStr) return undefined;
+   323→    const parts = dateStr.split("/");
+   324→    if (parts.length === 3) {
+   325→      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+   326→    }
+   327→    return undefined;
+   328→  };
+   329→
+   330→  return (
+   331→    <Popover open={open} onOpenChange={setOpen}>
+   332→      <PopoverTrigger asChild>
+   333→        <Button
+   334→          variant="outline"
+   335→          className="mt-1 w-full justify-start text-left font-normal h-9"
+   336→        >
+   337→          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+   338→          {value || "Pick a date"}
+   339→        </Button>
+   340→      </PopoverTrigger>
+   341→      <PopoverContent className="w-auto p-0" align="start">
+   342→        <Calendar
+   343→          mode="single"
+   344→          selected={parseDate(value)}
+   345→          onSelect={(date) => {
+   346→            if (date) {
+   347→              onChange(format(date, "dd/MM/yyyy"));
+   348→              setOpen(false);
+   349→            }
+   350→          }}
+   351→          captionLayout="dropdown-buttons"
+   352→          defaultMonth={parseDate(value) || new Date()}
+   353→        />
+   354→      </PopoverContent>
+   355→    </Popover>
+   356→  );
+   357→}
+   358→
+   359→// ==================== Main Component ====================
+   360→export default function EquipmentRequisitionSystem() {
+   361→  const [view, setView] = useState<"list" | "form">("list");
+   362→  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+   363→  const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
+   364→  const [isEditing, setIsEditing] = useState(false);
+   365→  const [editId, setEditId] = useState<string | null>(null);
+   366→  const [loading, setLoading] = useState(false);
+   367→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   368→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   369→  const [searchTerm, setSearchTerm] = useState("");
+   370→  const { toast } = useToast();
+   371→  const formRef = useRef<HTMLDivElement>(null);
+   372→
+   373→  const fetchRequisitions = useCallback(async () => {
+   374→    try {
+   375→      const res = await fetch("/api/requisitions");
+   376→      if (res.ok) setRequisitions(await res.json());
+   377→    } catch {
+   378→      toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
+   379→    }
+   380→  }, [toast]);
+   381→
+   382→  useEffect(() => { fetchRequisitions(); }, [fetchRequisitions]);
+   383→
+   384→  const calculateTotal = (items: RequisitionItem[]) =>
+   385→    items.filter((i) => i.qty > 0 && i.approxPrice > 0).reduce((sum, i) => sum + i.approxPrice * i.qty, 0);
+   386→
+   387→  const updateItem = (index: number, field: keyof RequisitionItem, value: string | number | boolean) => {
+   388→    const newItems = [...currentRequisition.items];
+   389→    newItems[index] = { ...newItems[index], [field]: value };
+   390→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   391→  };
+   392→
+   393→  const addRow = () => {
+   394→    const newItems = [...currentRequisition.items, emptyItem(currentRequisition.items.length + 1)];
+   395→    setCurrentRequisition({ ...currentRequisition, items: newItems });
+   396→  };
+   397→
+   398→  const removeRow = (index: number) => {
+   399→    const newItems = currentRequisition.items.filter((_, i) => i !== index);
+   400→    newItems.forEach((item, i) => (item.sl = i + 1));
+   401→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   402→  };
+   403→
+   404→  const handleSave = async () => {
+   405→    if (!currentRequisition.applicantName.trim()) {
+   406→      toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
+   407→      return;
+   408→    }
+   409→    if (!currentRequisition.employeeId.trim()) {
+   410→      toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+   411→      return;
+   412→    }
+   413→    setLoading(true);
+   414→    try {
+   415→      const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
+   416→      const method = editId ? "PUT" : "POST";
+   417→      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(currentRequisition) });
+   418→      if (res.ok) {
+   419→        toast({ title: editId ? "Updated Successfully" : "Saved Successfully", description: `Requisition has been ${editId ? "updated" : "saved"}` });
+   420→        await fetchRequisitions();
+   421→        setView("list"); setIsEditing(false); setEditId(null); setCurrentRequisition(createEmptyRequisition());
+   422→      } else {
+   423→        const err = await res.json();
+   424→        toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+   425→      }
+   426→    } catch {
+   427→      toast({ title: "Error", description: "Failed to save requisition", variant: "destructive" });
+   428→    } finally { setLoading(false); }
+   429→  };
+   430→
+   431→  const handleEdit = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(true); setView("form"); };
+   432→  const handleNew = () => { setCurrentRequisition(createEmptyRequisition()); setEditId(null); setIsEditing(true); setView("form"); };
+   433→  const handleView = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(false); setView("form"); };
+   434→
+   435→  const handleDelete = async () => {
+   436→    if (!deleteId) return;
+   437→    setLoading(true);
+   438→    try {
+   439→      const res = await fetch(`/api/requisitions/${deleteId}`, { method: "DELETE" });
+   440→      if (res.ok) { toast({ title: "Deleted", description: "Requisition has been deleted" }); await fetchRequisitions(); }
+   441→    } catch {
+   442→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   443→    } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
+   444→  };
+   445→
+   446→  const openPrintWindow = () => {
+   447→    const pw = window.open("", "_blank");
+   448→    if (!pw) return;
+   449→    pw.document.write(generatePrintHTML(currentRequisition));
+   450→    pw.document.close();
+   451→    setTimeout(() => pw.print(), 500);
+   452→  };
+   453→
+   454→  const generatePrintHTML = (req: Requisition) => `<!DOCTYPE html>
+   455→<html><head><title>Equipment Requisition Form</title><style>
+   456→*{margin:0;padding:0;box-sizing:border-box}
+   457→body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px;color:#1a1a1a;font-size:13px}
+   458→.container{max-width:900px;margin:0 auto;border:2px solid #333;padding:30px}
+   459→.header{text-align:center;margin-bottom:20px}
+   460→.header h1{font-size:22px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+   461→.header h2{font-size:14px;font-weight:600;color:#444}
+   462→.top-section{display:flex;gap:20px;margin-bottom:20px}
+   463→.left-col{flex:1}.right-col{flex:1}
+   464→.field{margin-bottom:8px}
+   465→.field-label{font-weight:600;font-size:12px;color:#555}
+   466→.field-value{font-size:13px}
+   467→.applicant-table{width:100%;border-collapse:collapse}
+   468→.applicant-table td{border:1px solid #999;padding:6px 10px;font-size:12px}
+   469→.applicant-table td:first-child{font-weight:600;background:#f5f5f5;width:40%}
+   470→.category-bar{display:flex;gap:15px;padding:10px;border:1px solid #ccc;margin-bottom:20px;flex-wrap:wrap;background:#fafafa}
+   471→.category-item{display:flex;align-items:center;gap:4px;font-size:12px}
+   472→.category-item input[type="checkbox"]{transform:scale(0.9)}
+   473→.equipment-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+   474→.equipment-table th{border:1px solid #333;padding:8px;background:#e8e8e8;font-size:12px;font-weight:700;text-align:center}
+   475→.equipment-table td{border:1px solid #999;padding:6px 8px;font-size:12px}
+   476→.equipment-table tr:nth-child(even){background:#fafafa}
+   477→.total-row{background:#e0e7ff!important;font-weight:700}
+   478→.reason-section{margin-bottom:25px}
+   479→.reason-section h3{font-size:13px;font-weight:700;margin-bottom:5px}
+   480→.reason-text{border:1px solid #ccc;padding:10px;min-height:50px;background:#fafafa}
+   481→.signature-section{display:flex;justify-content:space-between;margin-top:30px}
+   482→.signature-block{text-align:center;flex:1}
+   483→.signature-line{border-top:1px dashed #666;margin:40px 20px 8px 20px}
+   484→.signature-label{font-size:12px;font-weight:600}
+   485→@media print{body{padding:0}.container{border:none;padding:10px}}
+   486→</style></head><body>
+   487→<div class="container">
+   488→<div class="header"><h1>EQUIPMENT REQUISITION FORM</h1><h2>${req.department}</h2></div>
+   489→<div class="top-section">
+   490→<div class="left-col">
+   491→<div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
+   492→<div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+   493→<div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
+   494→<div class="field"><span class="field-value">${req.department}</span></div>
+   495→<div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
+   496→</div>
+   497→<div class="right-col">
+   498→<table class="applicant-table">
+   499→<tr><td>Applicant Name</td><td>${req.applicantName}</td></tr>
+   500→<tr><td>Applicant Department</td><td>${req.applicantDepartment}</td></tr>
+   501→<tr><td>Employee ID</td><td>${req.employeeId}</td></tr>
+   502→<tr><td>Branch Name</td><td>${req.branchName}</td></tr>
+   503→<tr><td>Address</td><td>${req.applicantAddress}</td></tr>
+   504→<tr><td>Contact</td><td>${req.contact}</td></tr>
+   505→</table></div></div>
+   506→<div class="category-bar">
+   507→${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+   508→</div>
+   509→<table class="equipment-table"><thead><tr>
+   510→<th style="width:40px">SL</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
+   511→</tr></thead><tbody>
+   512→${req.items.map((item) => `<tr>
+   513→<td style="text-align:center">${item.sl}</td>
+   514→<td>${item.equipmentName}</td><td>${item.description}</td>
+   515→<td style="text-align:center">${item.qty || "-"}</td>
+   516→<td style="text-align:center">${item.condition || "-"}</td>
+   517→<td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+   518→</tr>`).join("")}
+   519→<tr class="total-row"><td colspan="5" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
+   520→</tbody></table>
+   521→<div class="reason-section"><h3>PLEASE WRITE A REASON :</h3><div class="reason-text">${req.reason || "-"}</div></div>
+   522→<div class="signature-section">
+   523→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Applicant</div></div>
+   524→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Manager / In-Charge</div></div>
+   525→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Recommend by</div></div>
+   526→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Authority</div></div>
+   527→</div></div></body></html>`;
+   528→
+   529→  const getStatusBadge = (status: string) => {
+   530→    const colors: Record<string, string> = {
+   531→      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+   532→      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+   533→      Approved: "bg-green-100 text-green-800 border-green-300",
+   534→      Rejected: "bg-red-100 text-red-800 border-red-300",
+   535→    };
+   536→    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+   537→  };
+   538→
+   539→  const filteredRequisitions = requisitions.filter((r) =>
+   540→    r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   541→    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   542→    r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   543→    r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+   544→  );
+   545→
+   546→  // ===================== LIST VIEW =====================
+   547→  if (view === "list") {
+   548→    return (
+   549→      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   550→        <div className="bg-white border-b shadow-sm">
+   551→          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+   552→            <div className="flex items-center gap-3">
+   553→              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+   554→                <FileText className="w-5 h-5 text-white" />
+   555→              </div>
+   556→              <div>
+   557→                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+   558→                <p className="text-xs text-slate-500">Information and Technology Department</p>
+   559→              </div>
+   560→            </div>
+   561→            <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   562→              <Plus className="w-4 h-4" /> New Requisition
+   563→            </Button>
+   564→          </div>
+   565→        </div>
+   566→        <div className="max-w-7xl mx-auto px-4 py-6">
+   567→          <div className="flex items-center gap-3 mb-4">
+   568→            <div className="relative flex-1 max-w-md">
+   569→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   570→              <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+   571→            </div>
+   572→            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+   573→          </div>
+   574→          {filteredRequisitions.length === 0 ? (
+   575→            <Card className="text-center py-16">
+   576→              <CardContent>
+   577→                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+   578→                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+   579→                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+   580→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2"><Plus className="w-4 h-4" /> New Requisition</Button>
+   581→              </CardContent>
+   582→            </Card>
+   583→          ) : (
+   584→            <Card>
+   585→              <div className="overflow-x-auto">
+   586→                <table className="w-full">
+   587→                  <thead>
+   588→                    <tr className="border-b bg-slate-50">
+   589→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+   590→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+   591→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+   592→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+   593→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+   594→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+   595→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+   596→                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+   597→                    </tr>
+   598→                  </thead>
+   599→                  <tbody>
+   600→                    {filteredRequisitions.map((req, idx) => (
+   601→                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+   602→                        <td className="p-3 text-sm">{idx + 1}</td>
+   603→                        <td className="p-3 text-sm">{req.date}</td>
+   604→                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+   605→                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+   606→                        <td className="p-3 text-sm">{req.category}</td>
+   607→                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+   608→                        <td className="p-3">
+   609→                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+   610→                        </td>
+   611→                        <td className="p-3">
+   612→                          <div className="flex items-center justify-center gap-1">
+   613→                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
+   614→                            <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
+   615→                            <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+   616→                          </div>
+   617→                        </td>
+   618→                      </tr>
+   619→                    ))}
+   620→                  </tbody>
+   621→                </table>
+   622→              </div>
+   623→            </Card>
+   624→          )}
+   625→        </div>
+   626→        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   627→          <DialogContent>
+   628→            <DialogHeader><DialogTitle>Delete Requisition</DialogTitle><DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription></DialogHeader>
+   629→            <DialogFooter>
+   630→              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+   631→              <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete</Button>
+   632→            </DialogFooter>
+   633→          </DialogContent>
+   634→        </Dialog>
+   635→      </div>
+   636→    );
+   637→  }
+   638→
+   639→  // ===================== FORM VIEW =====================
+   640→  return (
+   641→    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   642→      <div className="bg-white border-b shadow-sm">
+   643→        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+   644→          <div className="flex items-center gap-3">
+   645→            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1"><ArrowLeft className="w-4 h-4" /> Back</Button>
+   646→            <Separator orientation="vertical" className="h-6" />
+   647→            <h2 className="text-sm font-semibold text-slate-700">{isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}</h2>
+   648→          </div>
+   649→          <div className="flex items-center gap-2">
+   650→            {isEditing && (
+   651→              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   652→                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+   653→              </Button>
+   654→            )}
+   655→            {!isEditing && editId && (
+   656→              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500"><Edit3 className="w-4 h-4" /> Edit</Button>
+   657→            )}
+   658→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
+   659→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+   660→          </div>
+   661→        </div>
+   662→      </div>
+   663→
+   664→      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+   665→        <Card className="shadow-md border-slate-300">
+   666→          <CardContent className="p-6">
+   667→            {/* Title */}
+   668→            <div className="text-center mb-6">
+   669→              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+   670→              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+   671→            </div>
+   672→
+   673→            {/* Top Section */}
+   674→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+   675→              {/* Left Column */}
+   676→              <div className="space-y-3">
+   677→                <div>
+   678→                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+   679→                  {isEditing ? (
+   680→                    <DatePickerWithAutoClose
+   681→                      value={currentRequisition.date}
+   682→                      onChange={(val) => setCurrentRequisition({ ...currentRequisition, date: val })}
+   683→                    />
+   684→                  ) : (
+   685→                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+   686→                  )}
+   687→                </div>
+   688→                <div className="pt-2"><p className="text-xs font-semibold text-slate-500">To,</p></div>
+   689→                <div>
+   690→                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+   691→                  {isEditing ? (
+   692→                    <Input value={currentRequisition.organizationName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })} className="mt-1" />
+   693→                  ) : (
+   694→                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+   695→                  )}
+   696→                </div>
+   697→                <div>
+   698→                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+   699→                  {isEditing ? (
+   700→                    <Input value={currentRequisition.department} onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })} className="mt-1" />
+   701→                  ) : (
+   702→                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+   703→                  )}
+   704→                </div>
+   705→                <div>
+   706→                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+   707→                  {isEditing ? (
+   708→                    <Textarea value={currentRequisition.address} onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })} className="mt-1" rows={2} />
+   709→                  ) : (
+   710→                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+   711→                  )}
+   712→                </div>
+   713→              </div>
+   714→
+   715→              {/* Right Column - Applicant Table */}
+   716→              <div className="border border-slate-300 rounded-md overflow-hidden">
+   717→                <table className="w-full text-sm">
+   718→                  <tbody>
+   719→                    <tr className="border-b border-slate-200">
+   720→                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+   721→                      <td className="p-2">
+   722→                        {isEditing ? (
+   723→                          <Input value={currentRequisition.applicantName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })} className="h-7 text-sm" />
+   724→                        ) : (
+   725→                          <span>{currentRequisition.applicantName}</span>
+   726→                        )}
+   727→                      </td>
+   728→                    </tr>
+   729→                    {/* Applicant Department - DROPDOWN */}
+   730→                    <tr className="border-b border-slate-200">
+   731→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+   732→                      <td className="p-2">
+   733→                        {isEditing ? (
+   734→                          <DropdownWithManage
+   735→                            label="Department"
+   736→                            type="department"
+   737→                            value={currentRequisition.applicantDepartment}
+   738→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
+   739→                            disabled={!isEditing}
+   740→                          />
+   741→                        ) : (
+   742→                          <span>{currentRequisition.applicantDepartment}</span>
+   743→                        )}
+   744→                      </td>
+   745→                    </tr>
+   746→                    <tr className="border-b border-slate-200">
+   747→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+   748→                      <td className="p-2">
+   749→                        {isEditing ? (
+   750→                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })} className="h-7 text-sm font-mono" />
+   751→                        ) : (
+   752→                          <span className="font-mono">{currentRequisition.employeeId}</span>
+   753→                        )}
+   754→                      </td>
+   755→                    </tr>
+   756→                    {/* Branch Name - DROPDOWN */}
+   757→                    <tr className="border-b border-slate-200">
+   758→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+   759→                      <td className="p-2">
+   760→                        {isEditing ? (
+   761→                          <DropdownWithManage
+   762→                            label="Branch"
+   763→                            type="branch"
+   764→                            value={currentRequisition.branchName}
+   765→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
+   766→                            disabled={!isEditing}
+   767→                          />
+   768→                        ) : (
+   769→                          <span>{currentRequisition.branchName}</span>
+   770→                        )}
+   771→                      </td>
+   772→                    </tr>
+   773→                    {/* Address - DROPDOWN */}
+   774→                    <tr className="border-b border-slate-200">
+   775→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+   776→                      <td className="p-2">
+   777→                        {isEditing ? (
+   778→                          <DropdownWithManage
+   779→                            label="Address"
+   780→                            type="address"
+   781→                            value={currentRequisition.applicantAddress}
+   782→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
+   783→                            disabled={!isEditing}
+   784→                          />
+   785→                        ) : (
+   786→                          <span>{currentRequisition.applicantAddress}</span>
+   787→                        )}
+   788→                      </td>
+   789→                    </tr>
+   790→                    <tr>
+   791→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+   792→                      <td className="p-2">
+   793→                        {isEditing ? (
+   794→                          <Input value={currentRequisition.contact} onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })} className="h-7 text-sm" />
+   795→                        ) : (
+   796→                          <span>{currentRequisition.contact}</span>
+   797→                        )}
+   798→                      </td>
+   799→                    </tr>
+   800→                  </tbody>
+   801→                </table>
+   802→              </div>
+   803→            </div>
+   804→
+   805→            {/* Category Selection Bar */}
+   806→            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+   807→              <div className="flex flex-wrap gap-4 items-center">
+   808→                {CATEGORIES.map((cat) => (
+   809→                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+   810→                    <Checkbox checked={currentRequisition.category === cat} onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })} disabled={!isEditing} />
+   811→                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+   812→                  </label>
+   813→                ))}
+   814→              </div>
+   815→            </div>
+   816→
+   817→            {/* Equipment Table */}
+   818→            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+   819→              <table className="w-full text-sm">
+   820→                <thead>
+   821→                  <tr className="bg-slate-200 border-b border-slate-400">
+   822→                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+   823→                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+   824→                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+   825→                    <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
+   826→                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+   827→                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+   828→                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+   829→                  </tr>
+   830→                </thead>
+   831→                <tbody>
+   832→                  {currentRequisition.items.map((item, index) => (
+   833→                    <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+   834→                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+   835→                      <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
+   836→                      <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
+   837→                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-7 text-xs text-center" min={0} /> : <span className="text-xs text-center block">{item.qty || "—"}</span>}</td>
+   838→                      <td className="p-2">
+   839→                        {isEditing ? (
+   840→                          <Select value={item.condition} onValueChange={(val) => updateItem(index, "condition", val)}>
+   841→                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+   842→                            <SelectContent>{CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   843→                          </Select>
+   844→                        ) : (
+   845→                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+   846→                        )}
+   847→                      </td>
+   848→                      <td className="p-2">{isEditing ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
+   849→                      {isEditing && (
+   850→                        <td className="p-1 text-center"><Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="h-6 w-6 p-0 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></Button></td>
+   851→                      )}
+   852→                    </tr>
+   853→                  ))}
+   854→                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+   855→                    <td colSpan={isEditing ? 5 : 4} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
+   856→                    <td className="p-2 text-right font-bold text-sm">৳{currentRequisition.totalAmount.toLocaleString()}</td>
+   857→                    {isEditing && <td></td>}
+   858→                  </tr>
+   859→                </tbody>
+   860→              </table>
+   861→            </div>
+   862→
+   863→            {isEditing && (
+   864→              <div className="mb-6"><Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add Row</Button></div>
+   865→            )}
+   866→
+   867→            {/* Reason */}
+   868→            <div className="mb-8">
+   869→              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+   870→              {isEditing ? (
+   871→                <Textarea value={currentRequisition.reason} onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })} className="min-h-[80px]" placeholder="Write your reason here..." />
+   872→              ) : (
+   873→                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">{currentRequisition.reason || "—"}</div>
+   874→              )}
+   875→            </div>
+   876→
+   877→            {/* Status */}
+   878→            {editId && (
+   879→              <div className="mb-8">
+   880→                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+   881→                {isEditing ? (
+   882→                  <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
+   883→                    <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
+   884→                    <SelectContent>
+   885→                      <SelectItem value="Draft">Draft</SelectItem>
+   886→                      <SelectItem value="Submitted">Submitted</SelectItem>
+   887→                      <SelectItem value="Approved">Approved</SelectItem>
+   888→                      <SelectItem value="Rejected">Rejected</SelectItem>
+   889→                    </SelectContent>
+   890→                  </Select>
+   891→                ) : (
+   892→                  <div className="mt-1"><span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>{currentRequisition.status}</span></div>
+   893→                )}
+   894→              </div>
+   895→            )}
+   896→
+   897→            {/* Signatures */}
+   898→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+   899→              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+   900→                <div key={role} className="text-center">
+   901→                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2"><p className="text-xs font-semibold text-slate-600">{role}</p></div>
+   902→                </div>
+   903→              ))}
+   904→            </div>
+   905→          </CardContent>
+   906→        </Card>
+   907→      </div>
+   908→    </div>
+   909→  );
+   910→}
+   911→
