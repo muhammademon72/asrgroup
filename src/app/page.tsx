@@ -106,7 +106,7 @@ const getDefaultItems = (): RequisitionItem[] => {
   const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
     sl: i + 1, equipmentName: name, description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
   }));
-  for (let i = 0; i < 5; i++) items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+  for (let i = 0; i < 3; i++) items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
   return items;
 };
 
