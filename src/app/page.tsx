@@ -590,12 +590,14 @@ ${req.items.map((item) => `<tr>
                 >
                   Requisition
                 </button>
-                <button
-                  onClick={() => setMainTab("users")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                >
-                  Users
-                </button>
+                {authUser.role === "Admin" && (
+                  <button
+                    onClick={() => setMainTab("users")}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    Admin Panel
+                  </button>
+                )}
               </div>
               {mainTab === "requisition" && (
                 <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">

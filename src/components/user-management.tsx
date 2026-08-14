@@ -387,11 +387,11 @@ export default function UserManagement() {
           </Select>
         </div>
         <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
-          <Plus className="w-4 h-4" /> Add User
+          <Plus className="w-4 h-4" /> Add New User
         </Button>
       </div>
 
-      <span className="text-sm text-slate-500">{users.length} user(s) found</span>
+      <span className="text-sm text-slate-500">{users.length} registered user(s)</span>
 
       {users.length === 0 ? (
         <Card className="text-center py-16">
