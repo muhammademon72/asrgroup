@@ -20,6 +20,7 @@ import {
   CalendarIcon,
   Eye,
   EyeOff,
+  Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -466,6 +467,22 @@ export default function EquipmentRequisitionSystem() {
   const handleEdit = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(true); setView("form"); };
   const handleNew = () => { setCurrentRequisition(createEmptyRequisition()); setEditId(null); setIsEditing(true); setView("form"); };
   const handleView = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(false); setView("form"); };
+  const handleCopyToNew = (req: Requisition) => {
+    const copied: Requisition = {
+      ...req,
+      id: undefined,
+      date: new Date().toLocaleDateString("en-GB"),
+      status: "Draft",
+      createdByEmail: authUser?.email || "",
+      items: req.items.map((item, i) => ({ ...item, id: undefined, sl: i + 1 })),
+      createdAt: undefined,
+      updatedAt: undefined,
+    };
+    setCurrentRequisition(copied);
+    setEditId(null);
+    setIsEditing(true);
+    setView("form");
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -714,6 +731,7 @@ ${req.items.map((item) => `<tr>
                             {(authUser.role === "Admin" || req.status === "Draft") && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
                             )}
+                            <Button variant="ghost" size="sm" onClick={() => handleCopyToNew(req)} title="Copy to New Requisition" className="h-8 w-8 p-0"><Copy className="w-4 h-4 text-emerald-600" /></Button>
                             {authUser.role === "Admin" && (
                               <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
                             )}
@@ -760,6 +778,9 @@ ${req.items.map((item) => `<tr>
             )}
             {!isEditing && editId && (authUser.role === "Admin" || currentRequisition.status === "Draft") && (
               <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500"><Edit3 className="w-4 h-4" /> Edit</Button>
+            )}
+            {editId && (
+              <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
             )}
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
