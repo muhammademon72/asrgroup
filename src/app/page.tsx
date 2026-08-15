@@ -989,15 +989,19 @@ ${req.items.map((item) => `<tr>
             {editId && (
               <div className="mb-8">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                {isEditing && authUser?.role === "Admin" ? (
+                {isEditing && (authUser?.role === "Admin" || authUser?.role === "User") ? (
                   <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
                     <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Read">Read</SelectItem>
                       <SelectItem value="Submitted">Submitted</SelectItem>
-                      <SelectItem value="Approved">Approved</SelectItem>
-                      <SelectItem value="Rejected">Rejected</SelectItem>
+                      {authUser?.role === "Admin" && (
+                        <>
+                          <SelectItem value="Read">Read</SelectItem>
+                          <SelectItem value="Approved">Approved</SelectItem>
+                          <SelectItem value="Rejected">Rejected</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 ) : (
