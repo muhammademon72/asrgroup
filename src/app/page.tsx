@@ -401,6 +401,7 @@ export default function EquipmentRequisitionSystem() {
   const formRef = useRef<HTMLDivElement>(null);
 
   // Fetch dropdown defaults from DB on mount so new requisitions use DB values
+  // Only override hardcoded defaults if they no longer exist in the DB options
   const fetchDropdownDefaults = useCallback(async () => {
     try {
       const [deptRes, branchRes, addrRes] = await Promise.all([
@@ -410,15 +411,22 @@ export default function EquipmentRequisitionSystem() {
       ]);
       if (deptRes.ok) {
         const depts: DropdownOption[] = await deptRes.json();
-        if (depts.length > 0) dropdownDefaults.department = depts[0].value;
+        // Only override if the hardcoded default is no longer in the DB
+        if (depts.length > 0 && !depts.some(d => d.value === dropdownDefaults.department)) {
+          dropdownDefaults.department = depts[0].value;
+        }
       }
       if (branchRes.ok) {
         const branches: DropdownOption[] = await branchRes.json();
-        if (branches.length > 0) dropdownDefaults.branch = branches[0].value;
+        if (branches.length > 0 && !branches.some(b => b.value === dropdownDefaults.branch)) {
+          dropdownDefaults.branch = branches[0].value;
+        }
       }
       if (addrRes.ok) {
         const addrs: DropdownOption[] = await addrRes.json();
-        if (addrs.length > 0) dropdownDefaults.address = addrs[0].value;
+        if (addrs.length > 0 && !addrs.some(a => a.value === dropdownDefaults.address)) {
+          dropdownDefaults.address = addrs[0].value;
+        }
       }
     } catch { /* ignore — hardcoded defaults will be used */ }
   }, []);
