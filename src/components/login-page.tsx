@@ -149,12 +149,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   </button>
                 </div>
 
-                {/* Default credentials hint */}
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-xs text-slate-500 font-medium mb-1">Default Credentials:</p>
-                  <p className="text-xs text-slate-600">Email: <span className="font-mono font-medium">admin@asrgroup.com</span></p>
-                  <p className="text-xs text-slate-600">Password: <span className="font-mono font-medium">123456</span></p>
-                </div>
+                {/* Default credentials hint - hidden for security */}
               </>
             ) : (
               <>
