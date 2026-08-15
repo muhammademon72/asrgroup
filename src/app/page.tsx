@@ -18,6 +18,8 @@ import {
   Pencil,
   Check,
   CalendarIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -554,6 +556,7 @@ ${req.items.map((item) => `<tr>
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      Read: "bg-indigo-100 text-indigo-800 border-indigo-300",
       Submitted: "bg-blue-100 text-blue-800 border-blue-300",
       Approved: "bg-green-100 text-green-800 border-green-300",
       Rejected: "bg-red-100 text-red-800 border-red-300",
@@ -678,6 +681,25 @@ ${req.items.map((item) => `<tr>
                         </td>
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1">
+                            {authUser.role !== "User" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  const newStatus = req.status === "Read" ? "Draft" : "Read";
+                                  await fetch(`/api/requisitions/${req.id}`, {
+                                    method: "PUT",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ ...req, status: newStatus }),
+                                  });
+                                  await fetchRequisitions();
+                                }}
+                                title={req.status === "Read" ? "Mark as Unread" : "Mark as Read"}
+                                className="h-8 w-8 p-0"
+                              >
+                                {req.status === "Read" ? <EyeOff className="w-4 h-4 text-indigo-500" /> : <Eye className="w-4 h-4 text-slate-400" />}
+                              </Button>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
                             <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
