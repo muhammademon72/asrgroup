@@ -147,6 +147,7 @@ function DropdownWithManage({
   value,
   onChange,
   disabled,
+  isAdmin,
 }: {
   label: string;
   type: "department" | "branch" | "address";
@@ -156,6 +157,13 @@ function DropdownWithManage({
   isAdmin: boolean;
 }) {
   const [options, setOptions] = useState<DropdownOption[]>([]);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [newOption, setNewOption] = useState("");
+  const [editingOpt, setEditingOpt] = useState<{ id: string; value: string } | null>(null);
+  const [deleteOptId, setDeleteOptId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [manageLoading, setManageLoading] = useState(false);
+  const { toast } = useToast();
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -166,21 +174,174 @@ function DropdownWithManage({
 
   useEffect(() => { fetchOptions(); }, [fetchOptions]);
 
+  const handleAddOption = async () => {
+    if (!newOption.trim()) return;
+    setManageLoading(true);
+    try {
+      const res = await fetch("/api/dropdown-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, value: newOption.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Added", description: `"${newOption.trim()}" added successfully` });
+        setNewOption("");
+        await fetchOptions();
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+    } finally { setManageLoading(false); }
+  };
+
+  const handleUpdateOption = async () => {
+    if (!editingOpt || !editingOpt.value.trim()) return;
+    setManageLoading(true);
+    try {
+      const res = await fetch(`/api/dropdown-options/${editingOpt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: editingOpt.value.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Updated", description: "Option updated successfully" });
+        setEditingOpt(null);
+        await fetchOptions();
+      } else {
+        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+    } finally { setManageLoading(false); }
+  };
+
+  const handleDeleteOption = async () => {
+    if (!deleteOptId) return;
+    setManageLoading(true);
+    try {
+      const res = await fetch(`/api/dropdown-options/${deleteOptId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Deleted", description: "Option removed successfully" });
+        setDeleteOptId(null);
+        setDeleteDialogOpen(false);
+        await fetchOptions();
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+    } finally { setManageLoading(false); }
+  };
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="h-7 text-xs w-full">
-        <SelectValue placeholder={`Select ${label}...`} />
-      </SelectTrigger>
-      <SelectContent>
-        {/* Show current value as fallback if it doesn't match any DB option */}
-        {value && !options.some(opt => opt.value === value) && (
-          <SelectItem key="__current__" value={value}>{value}</SelectItem>
-        )}
-        {options.map((opt) => (
-          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-1">
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+          <SelectValue placeholder={`Select ${label}...`} />
+        </SelectTrigger>
+        <SelectContent>
+          {/* Show current value as fallback if it doesn't match any DB option */}
+          {value && !options.some(opt => opt.value === value) && (
+            <SelectItem key="__current__" value={value}>{value}</SelectItem>
+          )}
+          {options.map((opt) => (
+            <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {isAdmin && (
+        <Popover open={manageOpen} onOpenChange={setManageOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              title="Manage options"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-0" align="end" side="bottom">
+            <div className="p-3 border-b bg-slate-50">
+              <h4 className="text-sm font-semibold text-slate-800">Manage {label}</h4>
+              <p className="text-xs text-slate-500">Add, edit, or remove options</p>
+            </div>
+            <div className="p-3 border-b">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder={`New ${label.toLowerCase()}...`}
+                  value={newOption}
+                  onChange={(e) => setNewOption(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+                  className="h-8 text-xs flex-1"
+                />
+                <Button
+                  onClick={handleAddOption}
+                  disabled={manageLoading || !newOption.trim()}
+                  size="sm"
+                  className="h-8 gap-1 bg-slate-800 hover:bg-slate-700 shrink-0"
+                >
+                  {manageLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                  Add
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {options.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400">No options yet</div>
+              ) : (
+                options.map((opt) => (
+                  <div key={opt.id} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-slate-50 transition-colors">
+                    {editingOpt?.id === opt.id ? (
+                      <>
+                        <Input
+                          value={editingOpt.value}
+                          onChange={(e) => setEditingOpt({ ...editingOpt, value: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && handleUpdateOption()}
+                          className="h-7 text-xs flex-1"
+                          autoFocus
+                        />
+                        <Button size="sm" onClick={handleUpdateOption} disabled={manageLoading} className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-500 shrink-0">
+                          <Check className="w-3 h-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingOpt(null)} className="h-7 w-7 p-0 shrink-0">
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-xs text-slate-700 truncate">{opt.value}</span>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingOpt({ id: opt.id, value: opt.value })} className="h-7 w-7 p-0 shrink-0" title="Edit">
+                          <Pencil className="w-3 h-3 text-blue-500" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setDeleteOptId(opt.id); setDeleteDialogOpen(true); }} className="h-7 w-7 p-0 shrink-0" title="Delete">
+                          <Trash2 className="w-3 h-3 text-red-400" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {label} Option</DialogTitle>
+            <DialogDescription>Are you sure you want to delete this option? This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteOption} disabled={manageLoading}>
+              {manageLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
