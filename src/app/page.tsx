@@ -18,8 +18,6 @@ import {
   Pencil,
   Check,
   CalendarIcon,
-  Eye,
-  EyeOff,
   Copy,
   Building2,
   MapPin,
@@ -955,25 +953,6 @@ ${req.items.map((item) => `<tr>
                         </td>
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1">
-                            {authUser.role === "Admin" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={async () => {
-                                  const newStatus = req.status === "Read" ? "Draft" : "Read";
-                                  await fetch(`/api/requisitions/${req.id}`, {
-                                    method: "PUT",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({ ...req, status: newStatus }),
-                                  });
-                                  await fetchRequisitions();
-                                }}
-                                title={req.status === "Read" ? "Mark as Unread" : "Mark as Read"}
-                                className="h-8 w-8 p-0"
-                              >
-                                {req.status === "Read" ? <EyeOff className="w-4 h-4 text-indigo-500" /> : <Eye className="w-4 h-4 text-slate-400" />}
-                              </Button>
-                            )}
                             <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
                             {(authUser.role === "Admin" || req.status === "Draft") && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
@@ -1273,7 +1252,6 @@ ${req.items.map((item) => `<tr>
                       <SelectItem value="Submitted">Submitted</SelectItem>
                       {authUser?.role === "Admin" && (
                         <>
-                          <SelectItem value="Read">Read</SelectItem>
                           <SelectItem value="Approved">Approved</SelectItem>
                           <SelectItem value="Rejected">Rejected</SelectItem>
                         </>
