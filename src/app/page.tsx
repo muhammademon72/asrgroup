@@ -142,12 +142,14 @@ function DropdownWithManage({
   value,
   onChange,
   disabled,
+  isAdmin,
 }: {
   label: string;
   type: "department" | "branch" | "address";
   value: string;
   onChange: (val: string) => void;
   disabled: boolean;
+  isAdmin: boolean;
 }) {
   const [options, setOptions] = useState<DropdownOption[]>([]);
   const [manageOpen, setManageOpen] = useState(false);
@@ -236,7 +238,7 @@ function DropdownWithManage({
           ))}
         </SelectContent>
       </Select>
-      {!disabled && (
+      {!disabled && isAdmin && (
         <Popover open={manageOpen} onOpenChange={setManageOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700" title="Manage options">
@@ -600,7 +602,7 @@ ${req.items.map((item) => `<tr>
                 >
                   Requisition
                 </button>
-                {authUser.role !== "User" && (
+                {authUser.role === "Admin" && (
                   <button
                     onClick={() => setMainTab("users")}
                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
@@ -681,7 +683,7 @@ ${req.items.map((item) => `<tr>
                         </td>
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1">
-                            {authUser.role !== "User" && (
+                            {authUser.role === "Admin" && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -702,7 +704,9 @@ ${req.items.map((item) => `<tr>
                             )}
                             <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                            {authUser.role === "Admin" && (
+                              <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -837,6 +841,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.applicantDepartment}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
                             disabled={!isEditing}
+                            isAdmin={authUser?.role === "Admin"}
                           />
                         ) : (
                           <span>{currentRequisition.applicantDepartment}</span>
@@ -864,6 +869,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.branchName}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
                             disabled={!isEditing}
+                            isAdmin={authUser?.role === "Admin"}
                           />
                         ) : (
                           <span>{currentRequisition.branchName}</span>
@@ -881,6 +887,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.applicantAddress}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
                             disabled={!isEditing}
+                            isAdmin={authUser?.role === "Admin"}
                           />
                         ) : (
                           <span>{currentRequisition.applicantAddress}</span>
@@ -980,11 +987,12 @@ ${req.items.map((item) => `<tr>
             {editId && (
               <div className="mb-8">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                {isEditing ? (
+                {isEditing && authUser?.role === "Admin" ? (
                   <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
                     <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Read">Read</SelectItem>
                       <SelectItem value="Submitted">Submitted</SelectItem>
                       <SelectItem value="Approved">Approved</SelectItem>
                       <SelectItem value="Rejected">Rejected</SelectItem>

@@ -46,7 +46,7 @@ interface User {
   updatedAt: string;
 }
 
-const ROLES = ["Admin", "Manager", "User"];
+const ROLES = ["Admin", "User"];
 const STATUSES = ["Active", "Inactive", "Suspended"];
 const DEPARTMENTS = [
   "Information Technology",
