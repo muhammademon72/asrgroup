@@ -147,7 +147,6 @@ function DropdownWithManage({
   value,
   onChange,
   disabled,
-  isAdmin,
 }: {
   label: string;
   type: "department" | "branch" | "address";
@@ -157,12 +156,6 @@ function DropdownWithManage({
   isAdmin: boolean;
 }) {
   const [options, setOptions] = useState<DropdownOption[]>([]);
-  const [manageOpen, setManageOpen] = useState(false);
-  const [newOptionValue, setNewOptionValue] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -173,156 +166,21 @@ function DropdownWithManage({
 
   useEffect(() => { fetchOptions(); }, [fetchOptions]);
 
-  const handleAdd = async () => {
-    if (!newOptionValue.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dropdown-options", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, value: newOptionValue.trim() }),
-      });
-      if (res.ok) {
-        toast({ title: "Added", description: `"${newOptionValue.trim()}" added to ${label}` });
-        setNewOptionValue("");
-        await fetchOptions();
-      } else {
-        const err = await res.json();
-        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
-    } finally { setLoading(false); }
-  };
-
-  const handleUpdate = async (id: string) => {
-    if (!editingValue.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/dropdown-options/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: editingValue.trim() }),
-      });
-      if (res.ok) {
-        toast({ title: "Updated", description: "Option updated successfully" });
-        setEditingId(null);
-        setEditingValue("");
-        await fetchOptions();
-      } else {
-        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
-    } finally { setLoading(false); }
-  };
-
-  const handleDelete = async (id: string, val: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/dropdown-options/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast({ title: "Deleted", description: `"${val}" removed from ${label}` });
-        if (value === val) onChange("");
-        await fetchOptions();
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
-    } finally { setLoading(false); }
-  };
-
   return (
-    <div className="flex items-center gap-1">
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="h-7 text-xs flex-1">
-          <SelectValue placeholder={`Select ${label}...`} />
-        </SelectTrigger>
-        <SelectContent>
-          {/* Show current value as fallback if it doesn't match any DB option */}
-          {value && !options.some(opt => opt.value === value) && (
-            <SelectItem key="__current__" value={value}>{value}</SelectItem>
-          )}
-          {options.map((opt) => (
-            <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {!disabled && isAdmin && (
-        <Popover open={manageOpen} onOpenChange={setManageOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700" title="Manage options">
-              <Settings2 className="w-3.5 h-3.5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-0" align="end">
-            <div className="p-3 border-b bg-slate-50">
-              <h4 className="text-sm font-semibold text-slate-700">Manage {label}</h4>
-              <p className="text-xs text-slate-400 mt-0.5">Add, edit or delete options</p>
-            </div>
-            <div className="p-3 border-b">
-              <div className="flex gap-1.5">
-                <Input
-                  placeholder={`New ${label.toLowerCase()}...`}
-                  value={newOptionValue}
-                  onChange={(e) => setNewOptionValue(e.target.value)}
-                  className="h-7 text-xs"
-                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                />
-                <Button size="sm" onClick={handleAdd} disabled={loading || !newOptionValue.trim()} className="h-7 px-2 shrink-0 bg-slate-700 hover:bg-slate-600">
-                  <Plus className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-            <div className="max-h-48 overflow-y-auto">
-              {options.length === 0 ? (
-                <p className="p-3 text-xs text-slate-400 text-center">No options yet</p>
-              ) : (
-                options.map((opt) => (
-                  <div key={opt.id} className="flex items-center gap-1 px-3 py-1.5 border-b last:border-b-0 hover:bg-slate-50 group">
-                    {editingId === opt.id ? (
-                      <>
-                        <Input
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          className="h-6 text-xs flex-1"
-                          onKeyDown={(e) => e.key === "Enter" && handleUpdate(opt.id)}
-                          autoFocus
-                        />
-                        <Button size="sm" onClick={() => handleUpdate(opt.id)} disabled={loading} className="h-6 w-6 p-0 shrink-0 text-green-600 hover:text-green-700">
-                          <Check className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(""); }} className="h-6 w-6 p-0 shrink-0">
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs flex-1 truncate">{opt.value}</span>
-                        <Button
-                          size="sm" variant="ghost"
-                          onClick={() => { setEditingId(opt.id); setEditingValue(opt.value); }}
-                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm" variant="ghost"
-                          onClick={() => handleDelete(opt.id, opt.value)}
-                          disabled={loading}
-                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger className="h-7 text-xs w-full">
+        <SelectValue placeholder={`Select ${label}...`} />
+      </SelectTrigger>
+      <SelectContent>
+        {/* Show current value as fallback if it doesn't match any DB option */}
+        {value && !options.some(opt => opt.value === value) && (
+          <SelectItem key="__current__" value={value}>{value}</SelectItem>
+        )}
+        {options.map((opt) => (
+          <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
