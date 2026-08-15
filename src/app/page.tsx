@@ -21,6 +21,9 @@ import {
   Eye,
   EyeOff,
   Copy,
+  Building2,
+  MapPin,
+  Network,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -373,6 +376,182 @@ function DatePickerWithAutoClose({
   );
 }
 
+// ==================== Dropdown Management Component ====================
+function DropdownManagement({ type, label, icon }: { type: "department" | "branch" | "address"; label: string; icon: React.ReactNode }) {
+  const [options, setOptions] = useState<DropdownOption[]>([]);
+  const [newValue, setNewValue] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const fetchOptions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/dropdown-options?type=${type}`);
+      if (res.ok) setOptions(await res.json());
+    } catch { /* ignore */ }
+  }, [type]);
+
+  useEffect(() => { fetchOptions(); }, [fetchOptions]);
+
+  const handleAdd = async () => {
+    if (!newValue.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dropdown-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, value: newValue.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Added", description: `"${newValue.trim()}" added successfully` });
+        setNewValue("");
+        await fetchOptions();
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || !editingValue.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/dropdown-options/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: editingValue.trim() }),
+      });
+      if (res.ok) {
+        toast({ title: "Updated", description: "Option updated successfully" });
+        setEditingId(null);
+        setEditingValue("");
+        await fetchOptions();
+      } else {
+        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/dropdown-options/${deleteId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Deleted", description: "Option removed successfully" });
+        setDeleteId(null);
+        setDeleteDialogOpen(false);
+        await fetchOptions();
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white">
+          {icon}
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">Manage {label}</h2>
+          <p className="text-sm text-slate-500">Create, edit, and delete {label.toLowerCase()} options</p>
+        </div>
+      </div>
+
+      {/* Add New */}
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder={`Enter new ${label.toLowerCase()} name...`}
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className="flex-1 h-9"
+            />
+            <Button onClick={handleAdd} disabled={loading || !newValue.trim()} className="bg-slate-800 hover:bg-slate-700 gap-2 h-9">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Options List */}
+      <Card className="shadow-sm">
+        <div className="border-b bg-slate-50 px-4 py-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">{label} List ({options.length})</h3>
+        </div>
+        {options.length === 0 ? (
+          <CardContent className="py-12 text-center">
+            <Settings2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+            <p className="text-sm text-slate-500">No {label.toLowerCase()} options found. Add one above.</p>
+          </CardContent>
+        ) : (
+          <div className="divide-y">
+            {options.map((opt, idx) => (
+              <div key={opt.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-600">{idx + 1}</span>
+                {editingId === opt.id ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <Input
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+                      className="h-8 flex-1"
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={handleUpdate} disabled={loading} className="gap-1 h-8 bg-emerald-600 hover:bg-emerald-500">
+                      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(""); }} className="h-8">Cancel</Button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm font-medium text-slate-700">{opt.value}</span>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditingId(opt.id); setEditingValue(opt.value); }} className="h-8 w-8 p-0" title="Edit">
+                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setDeleteId(opt.id); setDeleteDialogOpen(true); }} className="h-8 w-8 p-0" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {label}</DialogTitle>
+            <DialogDescription>Are you sure you want to delete this {label.toLowerCase()} option? This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 interface AuthUser {
   id: string;
@@ -387,7 +566,7 @@ interface AuthUser {
 
 export default function EquipmentRequisitionSystem() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [mainTab, setMainTab] = useState<"requisition" | "users">("requisition");
+  const [mainTab, setMainTab] = useState<"requisition" | "users" | "department" | "branch" | "address">("requisition");
   const [view, setView] = useState<"list" | "form">("list");
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
@@ -668,6 +847,28 @@ ${req.items.map((item) => `<tr>
                   Requisition
                 </button>
                 {authUser.role === "Admin" && (
+                  <>
+                    <button
+                      onClick={() => setMainTab("department")}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "department" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                      <Network className="w-3.5 h-3.5" /> Department
+                    </button>
+                    <button
+                      onClick={() => setMainTab("branch")}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "branch" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                      <Building2 className="w-3.5 h-3.5" /> Branch
+                    </button>
+                    <button
+                      onClick={() => setMainTab("address")}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "address" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                    >
+                      <MapPin className="w-3.5 h-3.5" /> Address
+                    </button>
+                  </>
+                )}
+                {authUser.role === "Admin" && (
                   <button
                     onClick={() => setMainTab("users")}
                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
@@ -700,6 +901,12 @@ ${req.items.map((item) => `<tr>
         <div className="max-w-7xl mx-auto px-4 py-6">
           {mainTab === "users" ? (
             <UserManagement />
+          ) : mainTab === "department" ? (
+            <DropdownManagement type="department" label="Department" icon={<Network className="w-5 h-5" />} />
+          ) : mainTab === "branch" ? (
+            <DropdownManagement type="branch" label="Branch" icon={<Building2 className="w-5 h-5" />} />
+          ) : mainTab === "address" ? (
+            <DropdownManagement type="address" label="Address" icon={<MapPin className="w-5 h-5" />} />
           ) : (
           <>
           <div className="flex items-center gap-3 mb-4">
