@@ -117,16 +117,19 @@ const getDefaultItems = (): RequisitionItem[] => {
   return items;
 };
 
-const createEmptyRequisition = (): Requisition => ({
+// Dropdown defaults — will be fetched from DB at runtime
+const dropdownDefaults = { department: "Information Technology", branch: "Head Office", address: "Elephant Road" };
+
+const createEmptyRequisition = (defaults = dropdownDefaults): Requisition => ({
   date: new Date().toLocaleDateString("en-GB"),
   organizationName: "ASR GROUP",
   department: "Information and Technology Department",
   address: "Head Office : Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
   applicantName: "",
-  applicantDepartment: "Information Technology",
+  applicantDepartment: defaults.department,
   employeeId: "",
-  branchName: "Head Office",
-  applicantAddress: "Elephant Road",
+  branchName: defaults.branch,
+  applicantAddress: defaults.address,
   contact: "",
   category: "Others Accessories",
   reason: "",
@@ -234,6 +237,10 @@ function DropdownWithManage({
           <SelectValue placeholder={`Select ${label}...`} />
         </SelectTrigger>
         <SelectContent>
+          {/* Show current value as fallback if it doesn't match any DB option */}
+          {value && !options.some(opt => opt.value === value) && (
+            <SelectItem key="__current__" value={value}>{value}</SelectItem>
+          )}
           {options.map((opt) => (
             <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
           ))}
@@ -393,6 +400,31 @@ export default function EquipmentRequisitionSystem() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Fetch dropdown defaults from DB on mount so new requisitions use DB values
+  const fetchDropdownDefaults = useCallback(async () => {
+    try {
+      const [deptRes, branchRes, addrRes] = await Promise.all([
+        fetch("/api/dropdown-options?type=department"),
+        fetch("/api/dropdown-options?type=branch"),
+        fetch("/api/dropdown-options?type=address"),
+      ]);
+      if (deptRes.ok) {
+        const depts: DropdownOption[] = await deptRes.json();
+        if (depts.length > 0) dropdownDefaults.department = depts[0].value;
+      }
+      if (branchRes.ok) {
+        const branches: DropdownOption[] = await branchRes.json();
+        if (branches.length > 0) dropdownDefaults.branch = branches[0].value;
+      }
+      if (addrRes.ok) {
+        const addrs: DropdownOption[] = await addrRes.json();
+        if (addrs.length > 0) dropdownDefaults.address = addrs[0].value;
+      }
+    } catch { /* ignore — hardcoded defaults will be used */ }
+  }, []);
+
+  useEffect(() => { fetchDropdownDefaults(); }, [fetchDropdownDefaults]);
+
   const fetchRequisitions = useCallback(async () => {
     try {
       let url = "/api/requisitions";
@@ -465,7 +497,7 @@ export default function EquipmentRequisitionSystem() {
   };
 
   const handleEdit = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(true); setView("form"); };
-  const handleNew = () => { setCurrentRequisition(createEmptyRequisition()); setEditId(null); setIsEditing(true); setView("form"); };
+  const handleNew = () => { setCurrentRequisition(createEmptyRequisition(dropdownDefaults)); setEditId(null); setIsEditing(true); setView("form"); };
   const handleView = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(false); setView("form"); };
   const handleCopyToNew = (req: Requisition) => {
     const copied: Requisition = {

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Prevent Next.js from caching this route in production
+export const dynamic = 'force-dynamic'
+
 // Simple hash function (for production, use bcrypt)
 function simpleHash(str: string): string {
   let hash = 0;

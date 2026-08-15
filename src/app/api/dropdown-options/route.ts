@@ -1,6 +1,9 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Prevent Next.js from caching this route in production
+export const dynamic = 'force-dynamic'
+
 // GET all dropdown options (optionally filtered by type)
 export async function GET(req: NextRequest) {
   try {

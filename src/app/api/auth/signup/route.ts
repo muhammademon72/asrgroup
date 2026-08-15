@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Prevent Next.js from caching this route in production
+export const dynamic = 'force-dynamic'
+
 // Simple hash function (must match login route)
 function simpleHash(str: string): string {
   let hash = 0;
