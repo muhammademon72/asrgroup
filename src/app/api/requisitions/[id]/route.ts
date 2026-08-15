@@ -26,6 +26,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json()
     const { items, ...requisitionData } = body
 
+    // Get existing requisition to preserve createdByEmail
+    const existing = await db.requisition.findUnique({ where: { id }, select: { createdByEmail: true } })
+
     // Delete existing items and recreate
     await db.requisitionItem.deleteMany({
       where: { requisitionId: id },
@@ -48,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         reason: requisitionData.reason,
         totalAmount: requisitionData.totalAmount,
         status: requisitionData.status,
-        createdByEmail: requisitionData.createdByEmail,
+        createdByEmail: requisitionData.createdByEmail || existing?.createdByEmail || '',
         items: {
           create: items.map((item: { sl: number; equipmentName: string; description: string; qty: number; condition: string; approxPrice: number; selected: boolean }) => ({
             sl: item.sl,
