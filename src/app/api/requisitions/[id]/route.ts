@@ -51,7 +51,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         reason: requisitionData.reason,
         totalAmount: requisitionData.totalAmount,
         status: requisitionData.status,
-        createdByEmail: requisitionData.createdByEmail || existing?.createdByEmail || '',
+        // Always preserve original createdByEmail — never overwrite with admin's email
+        createdByEmail: existing?.createdByEmail || requisitionData.createdByEmail || '',
         items: {
           create: items.map((item: { sl: number; equipmentName: string; description: string; qty: number; condition: string; approxPrice: number; selected: boolean }) => ({
             sl: item.sl,

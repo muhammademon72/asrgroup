@@ -1,0 +1,1027 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback, useRef } from "react";
+     4→     4→import { LogOut, UserCircle } from "lucide-react";
+     5→     5→import {
+     6→     6→  Save,
+     7→     7→  Edit3,
+     8→     8→  Trash2,
+     9→     9→  FileDown,
+    10→    10→  Printer,
+    11→    11→  Plus,
+    12→    12→  ArrowLeft,
+    13→    13→  Search,
+    14→    14→  X,
+    15→    15→  Loader2,
+    16→    16→  FileText,
+    17→    17→  Settings2,
+    18→    18→  Pencil,
+    19→    19→  Check,
+    20→    20→  CalendarIcon,
+    21→    21→  Eye,
+    22→    22→  EyeOff,
+    23→    23→} from "lucide-react";
+    24→    24→import { format } from "date-fns";
+    25→    25→import { Button } from "@/components/ui/button";
+    26→    26→import { Input } from "@/components/ui/input";
+    27→    27→import { Textarea } from "@/components/ui/textarea";
+    28→    28→import { Checkbox } from "@/components/ui/checkbox";
+    29→    29→import {
+    30→    30→  Select,
+    31→    31→  SelectContent,
+    32→    32→  SelectItem,
+    33→    33→  SelectTrigger,
+    34→    34→  SelectValue,
+    35→    35→} from "@/components/ui/select";
+    36→    36→import {
+    37→    37→  Dialog,
+    38→    38→  DialogContent,
+    39→    39→  DialogDescription,
+    40→    40→  DialogFooter,
+    41→    41→  DialogHeader,
+    42→    42→  DialogTitle,
+    43→    43→} from "@/components/ui/dialog";
+    44→    44→import {
+    45→    45→  Popover,
+    46→    46→  PopoverContent,
+    47→    47→  PopoverTrigger,
+    48→    48→} from "@/components/ui/popover";
+    49→    49→import { Card, CardContent } from "@/components/ui/card";
+    50→    50→import { Badge } from "@/components/ui/badge";
+    51→    51→import { Separator } from "@/components/ui/separator";
+    52→    52→import { Calendar } from "@/components/ui/calendar";
+    53→    53→import { useToast } from "@/hooks/use-toast";
+    54→    54→import UserManagement from "@/components/user-management";
+    55→    55→import LoginPage from "@/components/login-page";
+    56→    56→
+    57→    57→// Types
+    58→    58→interface RequisitionItem {
+    59→    59→  id?: string;
+    60→    60→  sl: number;
+    61→    61→  equipmentName: string;
+    62→    62→  description: string;
+    63→    63→  qty: number;
+    64→    64→  condition: string;
+    65→    65→  approxPrice: number;
+    66→    66→  selected: boolean;
+    67→    67→}
+    68→    68→
+    69→    69→interface Requisition {
+    70→    70→  id?: string;
+    71→    71→  date: string;
+    72→    72→  organizationName: string;
+    73→    73→  department: string;
+    74→    74→  address: string;
+    75→    75→  applicantName: string;
+    76→    76→  applicantDepartment: string;
+    77→    77→  employeeId: string;
+    78→    78→  branchName: string;
+    79→    79→  applicantAddress: string;
+    80→    80→  contact: string;
+    81→    81→  category: string;
+    82→    82→  reason: string;
+    83→    83→  totalAmount: number;
+    84→    84→  status: string;
+    85→    85→  createdByEmail: string;
+    86→    86→  items: RequisitionItem[];
+    87→    87→  createdAt?: string;
+    88→    88→  updatedAt?: string;
+    89→    89→}
+    90→    90→
+    91→    91→interface DropdownOption {
+    92→    92→  id: string;
+    93→    93→  type: string;
+    94→    94→  value: string;
+    95→    95→}
+    96→    96→
+    97→    97→// Default equipment list
+    98→    98→const DEFAULT_EQUIPMENT_NAMES = [
+    99→    99→  "Processor", "Motherboard", "Ram", "SSD Drive", "Power Supply",
+   100→   100→  "CPU Casing", "Monitor", "Mouse", "Keyboard", "UPS",
+   101→   101→  "Wi-Fi Router", "Toner / Cartridge",
+   102→   102→];
+   103→   103→
+   104→   104→const CATEGORIES = ["Desktop", "Laptop", "Network", "CCTV", "PC-Update", "Others Accessories", "Repairing"];
+   105→   105→const CONDITIONS = ["New", "Used", "Refurbished"];
+   106→   106→
+   107→   107→const emptyItem = (sl: number): RequisitionItem => ({
+   108→   108→  sl, equipmentName: "", description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   109→   109→});
+   110→   110→
+   111→   111→const getDefaultItems = (): RequisitionItem[] => {
+   112→   112→  const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
+   113→   113→    sl: i + 1, equipmentName: name, description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   114→   114→  }));
+   115→   115→  for (let i = 0; i < 3; i++) items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+   116→   116→  return items;
+   117→   117→};
+   118→   118→
+   119→   119→const createEmptyRequisition = (): Requisition => ({
+   120→   120→  date: new Date().toLocaleDateString("en-GB"),
+   121→   121→  organizationName: "ASR GROUP",
+   122→   122→  department: "Information and Technology Department",
+   123→   123→  address: "Head Office : Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+   124→   124→  applicantName: "",
+   125→   125→  applicantDepartment: "Information Technology",
+   126→   126→  employeeId: "",
+   127→   127→  branchName: "Head Office",
+   128→   128→  applicantAddress: "Elephant Road",
+   129→   129→  contact: "",
+   130→   130→  category: "Others Accessories",
+   131→   131→  reason: "",
+   132→   132→  totalAmount: 0,
+   133→   133→  status: "Draft",
+   134→   134→  createdByEmail: "",
+   135→   135→  items: getDefaultItems(),
+   136→   136→});
+   137→   137→
+   138→   138→// ==================== DropdownWithManage Component ====================
+   139→   139→function DropdownWithManage({
+   140→   140→  label,
+   141→   141→  type,
+   142→   142→  value,
+   143→   143→  onChange,
+   144→   144→  disabled,
+   145→   145→  isAdmin,
+   146→   146→}: {
+   147→   147→  label: string;
+   148→   148→  type: "department" | "branch" | "address";
+   149→   149→  value: string;
+   150→   150→  onChange: (val: string) => void;
+   151→   151→  disabled: boolean;
+   152→   152→  isAdmin: boolean;
+   153→   153→}) {
+   154→   154→  const [options, setOptions] = useState<DropdownOption[]>([]);
+   155→   155→  const [manageOpen, setManageOpen] = useState(false);
+   156→   156→  const [newOptionValue, setNewOptionValue] = useState("");
+   157→   157→  const [editingId, setEditingId] = useState<string | null>(null);
+   158→   158→  const [editingValue, setEditingValue] = useState("");
+   159→   159→  const [loading, setLoading] = useState(false);
+   160→   160→  const { toast } = useToast();
+   161→   161→
+   162→   162→  const fetchOptions = useCallback(async () => {
+   163→   163→    try {
+   164→   164→      const res = await fetch(`/api/dropdown-options?type=${type}`);
+   165→   165→      if (res.ok) setOptions(await res.json());
+   166→   166→    } catch { /* ignore */ }
+   167→   167→  }, [type]);
+   168→   168→
+   169→   169→  useEffect(() => { fetchOptions(); }, [fetchOptions]);
+   170→   170→
+   171→   171→  const handleAdd = async () => {
+   172→   172→    if (!newOptionValue.trim()) return;
+   173→   173→    setLoading(true);
+   174→   174→    try {
+   175→   175→      const res = await fetch("/api/dropdown-options", {
+   176→   176→        method: "POST",
+   177→   177→        headers: { "Content-Type": "application/json" },
+   178→   178→        body: JSON.stringify({ type, value: newOptionValue.trim() }),
+   179→   179→      });
+   180→   180→      if (res.ok) {
+   181→   181→        toast({ title: "Added", description: `"${newOptionValue.trim()}" added to ${label}` });
+   182→   182→        setNewOptionValue("");
+   183→   183→        await fetchOptions();
+   184→   184→      } else {
+   185→   185→        const err = await res.json();
+   186→   186→        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+   187→   187→      }
+   188→   188→    } catch {
+   189→   189→      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+   190→   190→    } finally { setLoading(false); }
+   191→   191→  };
+   192→   192→
+   193→   193→  const handleUpdate = async (id: string) => {
+   194→   194→    if (!editingValue.trim()) return;
+   195→   195→    setLoading(true);
+   196→   196→    try {
+   197→   197→      const res = await fetch(`/api/dropdown-options/${id}`, {
+   198→   198→        method: "PUT",
+   199→   199→        headers: { "Content-Type": "application/json" },
+   200→   200→        body: JSON.stringify({ value: editingValue.trim() }),
+   201→   201→      });
+   202→   202→      if (res.ok) {
+   203→   203→        toast({ title: "Updated", description: "Option updated successfully" });
+   204→   204→        setEditingId(null);
+   205→   205→        setEditingValue("");
+   206→   206→        await fetchOptions();
+   207→   207→      } else {
+   208→   208→        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   209→   209→      }
+   210→   210→    } catch {
+   211→   211→      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   212→   212→    } finally { setLoading(false); }
+   213→   213→  };
+   214→   214→
+   215→   215→  const handleDelete = async (id: string, val: string) => {
+   216→   216→    setLoading(true);
+   217→   217→    try {
+   218→   218→      const res = await fetch(`/api/dropdown-options/${id}`, { method: "DELETE" });
+   219→   219→      if (res.ok) {
+   220→   220→        toast({ title: "Deleted", description: `"${val}" removed from ${label}` });
+   221→   221→        if (value === val) onChange("");
+   222→   222→        await fetchOptions();
+   223→   223→      }
+   224→   224→    } catch {
+   225→   225→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   226→   226→    } finally { setLoading(false); }
+   227→   227→  };
+   228→   228→
+   229→   229→  return (
+   230→   230→    <div className="flex items-center gap-1">
+   231→   231→      <Select value={value} onValueChange={onChange} disabled={disabled}>
+   232→   232→        <SelectTrigger className="h-7 text-xs flex-1">
+   233→   233→          <SelectValue placeholder={`Select ${label}...`} />
+   234→   234→        </SelectTrigger>
+   235→   235→        <SelectContent>
+   236→   236→          {options.map((opt) => (
+   237→   237→            <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+   238→   238→          ))}
+   239→   239→        </SelectContent>
+   240→   240→      </Select>
+   241→   241→      {!disabled && isAdmin && (
+   242→   242→        <Popover open={manageOpen} onOpenChange={setManageOpen}>
+   243→   243→          <PopoverTrigger asChild>
+   244→   244→            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700" title="Manage options">
+   245→   245→              <Settings2 className="w-3.5 h-3.5" />
+   246→   246→            </Button>
+   247→   247→          </PopoverTrigger>
+   248→   248→          <PopoverContent className="w-72 p-0" align="end">
+   249→   249→            <div className="p-3 border-b bg-slate-50">
+   250→   250→              <h4 className="text-sm font-semibold text-slate-700">Manage {label}</h4>
+   251→   251→              <p className="text-xs text-slate-400 mt-0.5">Add, edit or delete options</p>
+   252→   252→            </div>
+   253→   253→            <div className="p-3 border-b">
+   254→   254→              <div className="flex gap-1.5">
+   255→   255→                <Input
+   256→   256→                  placeholder={`New ${label.toLowerCase()}...`}
+   257→   257→                  value={newOptionValue}
+   258→   258→                  onChange={(e) => setNewOptionValue(e.target.value)}
+   259→   259→                  className="h-7 text-xs"
+   260→   260→                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+   261→   261→                />
+   262→   262→                <Button size="sm" onClick={handleAdd} disabled={loading || !newOptionValue.trim()} className="h-7 px-2 shrink-0 bg-slate-700 hover:bg-slate-600">
+   263→   263→                  <Plus className="w-3.5 h-3.5" />
+   264→   264→                </Button>
+   265→   265→              </div>
+   266→   266→            </div>
+   267→   267→            <div className="max-h-48 overflow-y-auto">
+   268→   268→              {options.length === 0 ? (
+   269→   269→                <p className="p-3 text-xs text-slate-400 text-center">No options yet</p>
+   270→   270→              ) : (
+   271→   271→                options.map((opt) => (
+   272→   272→                  <div key={opt.id} className="flex items-center gap-1 px-3 py-1.5 border-b last:border-b-0 hover:bg-slate-50 group">
+   273→   273→                    {editingId === opt.id ? (
+   274→   274→                      <>
+   275→   275→                        <Input
+   276→   276→                          value={editingValue}
+   277→   277→                          onChange={(e) => setEditingValue(e.target.value)}
+   278→   278→                          className="h-6 text-xs flex-1"
+   279→   279→                          onKeyDown={(e) => e.key === "Enter" && handleUpdate(opt.id)}
+   280→   280→                          autoFocus
+   281→   281→                        />
+   282→   282→                        <Button size="sm" onClick={() => handleUpdate(opt.id)} disabled={loading} className="h-6 w-6 p-0 shrink-0 text-green-600 hover:text-green-700">
+   283→   283→                          <Check className="w-3 h-3" />
+   284→   284→                        </Button>
+   285→   285→                        <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(""); }} className="h-6 w-6 p-0 shrink-0">
+   286→   286→                          <X className="w-3 h-3" />
+   287→   287→                        </Button>
+   288→   288→                      </>
+   289→   289→                    ) : (
+   290→   290→                      <>
+   291→   291→                        <span className="text-xs flex-1 truncate">{opt.value}</span>
+   292→   292→                        <Button
+   293→   293→                          size="sm" variant="ghost"
+   294→   294→                          onClick={() => { setEditingId(opt.id); setEditingValue(opt.value); }}
+   295→   295→                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700"
+   296→   296→                        >
+   297→   297→                          <Pencil className="w-3 h-3" />
+   298→   298→                        </Button>
+   299→   299→                        <Button
+   300→   300→                          size="sm" variant="ghost"
+   301→   301→                          onClick={() => handleDelete(opt.id, opt.value)}
+   302→   302→                          disabled={loading}
+   303→   303→                          className="h-6 w-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
+   304→   304→                        >
+   305→   305→                          <Trash2 className="w-3 h-3" />
+   306→   306→                        </Button>
+   307→   307→                      </>
+   308→   308→                    )}
+   309→   309→                  </div>
+   310→   310→                ))
+   311→   311→              )}
+   312→   312→            </div>
+   313→   313→          </PopoverContent>
+   314→   314→        </Popover>
+   315→   315→      )}
+   316→   316→    </div>
+   317→   317→  );
+   318→   318→}
+   319→   319→
+   320→   320→// ==================== DatePickerWithAutoClose Component ====================
+   321→   321→function DatePickerWithAutoClose({
+   322→   322→  value,
+   323→   323→  onChange,
+   324→   324→}: {
+   325→   325→  value: string;
+   326→   326→  onChange: (val: string) => void;
+   327→   327→}) {
+   328→   328→  const [open, setOpen] = useState(false);
+   329→   329→
+   330→   330→  const parseDate = (dateStr: string): Date | undefined => {
+   331→   331→    if (!dateStr) return undefined;
+   332→   332→    const parts = dateStr.split("/");
+   333→   333→    if (parts.length === 3) {
+   334→   334→      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+   335→   335→    }
+   336→   336→    return undefined;
+   337→   337→  };
+   338→   338→
+   339→   339→  return (
+   340→   340→    <Popover open={open} onOpenChange={setOpen}>
+   341→   341→      <PopoverTrigger asChild>
+   342→   342→        <Button
+   343→   343→          variant="outline"
+   344→   344→          className="mt-1 w-full justify-start text-left font-normal h-9"
+   345→   345→        >
+   346→   346→          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+   347→   347→          {value || "Pick a date"}
+   348→   348→        </Button>
+   349→   349→      </PopoverTrigger>
+   350→   350→      <PopoverContent className="w-auto p-0" align="start">
+   351→   351→        <Calendar
+   352→   352→          mode="single"
+   353→   353→          selected={parseDate(value)}
+   354→   354→          onSelect={(date) => {
+   355→   355→            if (date) {
+   356→   356→              onChange(format(date, "dd/MM/yyyy"));
+   357→   357→              setOpen(false);
+   358→   358→            }
+   359→   359→          }}
+   360→   360→          captionLayout="dropdown-buttons"
+   361→   361→          defaultMonth={parseDate(value) || new Date()}
+   362→   362→        />
+   363→   363→      </PopoverContent>
+   364→   364→    </Popover>
+   365→   365→  );
+   366→   366→}
+   367→   367→
+   368→   368→// ==================== Main Component ====================
+   369→   369→interface AuthUser {
+   370→   370→  id: string;
+   371→   371→  name: string;
+   372→   372→  email: string;
+   373→   373→  role: string;
+   374→   374→  department: string;
+   375→   375→  branch: string;
+   376→   376→  employeeId: string;
+   377→   377→  status: string;
+   378→   378→}
+   379→   379→
+   380→   380→export default function EquipmentRequisitionSystem() {
+   381→   381→  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+   382→   382→  const [mainTab, setMainTab] = useState<"requisition" | "users">("requisition");
+   383→   383→  const [view, setView] = useState<"list" | "form">("list");
+   384→   384→  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+   385→   385→  const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
+   386→   386→  const [isEditing, setIsEditing] = useState(false);
+   387→   387→  const [editId, setEditId] = useState<string | null>(null);
+   388→   388→  const [loading, setLoading] = useState(false);
+   389→   389→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   390→   390→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   391→   391→  const [searchTerm, setSearchTerm] = useState("");
+   392→   392→  const { toast } = useToast();
+   393→   393→  const formRef = useRef<HTMLDivElement>(null);
+   394→   394→
+   395→   395→  const fetchRequisitions = useCallback(async () => {
+   396→   396→    try {
+   397→   397→      let url = "/api/requisitions";
+   398→   398→      // If User role, only fetch their own requisitions
+   399→   399→      if (authUser && authUser.role === "User" && authUser.email) {
+   400→   400→        url += `?createdByEmail=${encodeURIComponent(authUser.email)}`;
+   401→   401→      }
+   402→   402→      const res = await fetch(url);
+   403→   403→      if (res.ok) setRequisitions(await res.json());
+   404→   404→    } catch {
+   405→   405→      toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
+   406→   406→    }
+   407→   407→  }, [toast, authUser]);
+   408→   408→
+   409→   409→  useEffect(() => { fetchRequisitions(); }, [fetchRequisitions]);
+   410→   410→
+   411→   411→  const calculateTotal = (items: RequisitionItem[]) =>
+   412→   412→    items.filter((i) => i.qty > 0 && i.approxPrice > 0).reduce((sum, i) => sum + i.approxPrice * i.qty, 0);
+   413→   413→
+   414→   414→  const updateItem = (index: number, field: keyof RequisitionItem, value: string | number | boolean) => {
+   415→   415→    const newItems = [...currentRequisition.items];
+   416→   416→    newItems[index] = { ...newItems[index], [field]: value };
+   417→   417→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   418→   418→  };
+   419→   419→
+   420→   420→  const addRow = () => {
+   421→   421→    const newItems = [...currentRequisition.items, emptyItem(currentRequisition.items.length + 1)];
+   422→   422→    setCurrentRequisition({ ...currentRequisition, items: newItems });
+   423→   423→  };
+   424→   424→
+   425→   425→  const removeRow = (index: number) => {
+   426→   426→    const newItems = currentRequisition.items.filter((_, i) => i !== index);
+   427→   427→    newItems.forEach((item, i) => (item.sl = i + 1));
+   428→   428→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   429→   429→  };
+   430→   430→
+   431→   431→  const handleSave = async () => {
+   432→   432→    if (!currentRequisition.applicantName.trim()) {
+   433→   433→      toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
+   434→   434→      return;
+   435→   435→    }
+   436→   436→    if (!currentRequisition.employeeId.trim()) {
+   437→   437→      toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+   438→   438→      return;
+   439→   439→    }
+   440→   440→    setLoading(true);
+   441→   441→    try {
+   442→   442→      const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
+   443→   443→      const method = editId ? "PUT" : "POST";
+   444→   444→      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...currentRequisition, createdByEmail: authUser?.email || "" }) });
+   445→   445→      if (res.ok) {
+   446→   446→        toast({ title: editId ? "Updated Successfully" : "Saved Successfully", description: `Requisition has been ${editId ? "updated" : "saved"}` });
+   447→   447→        await fetchRequisitions();
+   448→   448→        setView("list"); setIsEditing(false); setEditId(null); setCurrentRequisition(createEmptyRequisition());
+   449→   449→      } else {
+   450→   450→        const err = await res.json();
+   451→   451→        toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+   452→   452→      }
+   453→   453→    } catch {
+   454→   454→      toast({ title: "Error", description: "Failed to save requisition", variant: "destructive" });
+   455→   455→    } finally { setLoading(false); }
+   456→   456→  };
+   457→   457→
+   458→   458→  const handleEdit = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(true); setView("form"); };
+   459→   459→  const handleNew = () => { setCurrentRequisition(createEmptyRequisition()); setEditId(null); setIsEditing(true); setView("form"); };
+   460→   460→  const handleView = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(false); setView("form"); };
+   461→   461→
+   462→   462→  const handleDelete = async () => {
+   463→   463→    if (!deleteId) return;
+   464→   464→    setLoading(true);
+   465→   465→    try {
+   466→   466→      const res = await fetch(`/api/requisitions/${deleteId}`, { method: "DELETE" });
+   467→   467→      if (res.ok) { toast({ title: "Deleted", description: "Requisition has been deleted" }); await fetchRequisitions(); }
+   468→   468→    } catch {
+   469→   469→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   470→   470→    } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
+   471→   471→  };
+   472→   472→
+   473→   473→  const openPrintWindow = () => {
+   474→   474→    const pw = window.open("", "_blank");
+   475→   475→    if (!pw) return;
+   476→   476→    pw.document.write(generatePrintHTML(currentRequisition));
+   477→   477→    pw.document.close();
+   478→   478→    setTimeout(() => pw.print(), 500);
+   479→   479→  };
+   480→   480→
+   481→   481→  const generatePrintHTML = (req: Requisition) => `<!DOCTYPE html>
+   482→   482→<html><head><title>Equipment Requisition Form</title><style>
+   483→   483→*{margin:0;padding:0;box-sizing:border-box}
+   484→   484→@page{size:A4;margin:10mm}
+   485→   485→body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a1a1a;font-size:12px}
+   486→   486→.container{max-width:190mm;margin:0 auto;border:2px solid #333;padding:15px}
+   487→   487→.header{text-align:center;margin-bottom:15px}
+   488→   488→.header h1{font-size:20px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+   489→   489→.header h2{font-size:13px;font-weight:600;color:#444}
+   490→   490→.top-section{display:flex;gap:15px;margin-bottom:15px}
+   491→   491→.left-col{flex:1}.right-col{flex:1}
+   492→   492→.field{margin-bottom:6px}
+   493→   493→.field-label{font-weight:600;font-size:11px;color:#555}
+   494→   494→.field-value{font-size:12px}
+   495→   495→.applicant-table{width:100%;border-collapse:collapse}
+   496→   496→.applicant-table td{border:1px solid #999;padding:5px 8px;font-size:11px}
+   497→   497→.applicant-table td:first-child{font-weight:600;background:#f5f5f5;width:40%}
+   498→   498→.category-bar{display:flex;gap:12px;padding:8px;border:1px solid #ccc;margin-bottom:15px;flex-wrap:wrap;background:#fafafa}
+   499→   499→.category-item{display:flex;align-items:center;gap:4px;font-size:11px}
+   500→   500→.category-item input[type="checkbox"]{transform:scale(0.85)}
+   501→   501→.equipment-table{width:100%;border-collapse:collapse;margin-bottom:15px}
+   502→   502→.equipment-table th{border:1px solid #333;padding:6px;background:#e8e8e8;font-size:11px;font-weight:700;text-align:center}
+   503→   503→.equipment-table td{border:1px solid #999;padding:5px 6px;font-size:11px}
+   504→   504→.equipment-table tr:nth-child(even){background:#fafafa}
+   505→   505→.total-row{background:#e0e7ff!important;font-weight:700}
+   506→   506→.reason-section{margin-bottom:20px}
+   507→   507→.reason-section h3{font-size:12px;font-weight:700;margin-bottom:4px}
+   508→   508→.reason-text{border:1px solid #ccc;padding:8px;min-height:40px;background:#fafafa;font-size:11px}
+   509→   509→.signature-section{display:flex;justify-content:space-between;margin-top:20px}
+   510→   510→.signature-block{text-align:center;flex:1}
+   511→   511→.signature-line{border-top:1px dashed #666;margin:30px 15px 6px 15px}
+   512→   512→.signature-label{font-size:11px;font-weight:600}
+   513→   513→@media print{body{padding:0}.container{border:none;padding:10px}}
+   514→   514→</style></head><body>
+   515→   515→<div class="container">
+   516→   516→<div class="header"><h1>EQUIPMENT REQUISITION FORM</h1><h2>${req.department}</h2></div>
+   517→   517→<div class="top-section">
+   518→   518→<div class="left-col">
+   519→   519→<div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
+   520→   520→<div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+   521→   521→<div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
+   522→   522→<div class="field"><span class="field-value">${req.department}</span></div>
+   523→   523→<div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
+   524→   524→</div>
+   525→   525→<div class="right-col">
+   526→   526→<table class="applicant-table">
+   527→   527→<tr><td>Applicant Name</td><td>${req.applicantName}</td></tr>
+   528→   528→<tr><td>Applicant Department</td><td>${req.applicantDepartment}</td></tr>
+   529→   529→<tr><td>Employee ID</td><td>${req.employeeId}</td></tr>
+   530→   530→<tr><td>Branch Name</td><td>${req.branchName}</td></tr>
+   531→   531→<tr><td>Address</td><td>${req.applicantAddress}</td></tr>
+   532→   532→<tr><td>Contact</td><td>${req.contact}</td></tr>
+   533→   533→</table></div></div>
+   534→   534→<div class="category-bar">
+   535→   535→${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+   536→   536→</div>
+   537→   537→<table class="equipment-table"><thead><tr>
+   538→   538→<th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
+   539→   539→</tr></thead><tbody>
+   540→   540→${req.items.map((item) => `<tr>
+   541→   541→<td style="text-align:center">${item.sl}</td>
+   542→   542→<td style="text-align:center">${item.selected ? "✓" : ""}</td>
+   543→   543→<td>${item.equipmentName}</td><td>${item.description}</td>
+   544→   544→<td style="text-align:center">${item.qty || "-"}</td>
+   545→   545→<td style="text-align:center">${item.condition || "-"}</td>
+   546→   546→<td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+   547→   547→</tr>`).join("")}
+   548→   548→<tr class="total-row"><td colspan="6" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
+   549→   549→</tbody></table>
+   550→   550→<div class="reason-section"><h3>PLEASE WRITE A REASON :</h3><div class="reason-text">${req.reason || "-"}</div></div>
+   551→   551→<div class="signature-section">
+   552→   552→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Applicant</div></div>
+   553→   553→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Manager / In-Charge</div></div>
+   554→   554→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Recommend by</div></div>
+   555→   555→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Authority</div></div>
+   556→   556→</div></div></body></html>`;
+   557→   557→
+   558→   558→  const getStatusBadge = (status: string) => {
+   559→   559→    const colors: Record<string, string> = {
+   560→   560→      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+   561→   561→      Read: "bg-indigo-100 text-indigo-800 border-indigo-300",
+   562→   562→      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+   563→   563→      Approved: "bg-green-100 text-green-800 border-green-300",
+   564→   564→      Rejected: "bg-red-100 text-red-800 border-red-300",
+   565→   565→    };
+   566→   566→    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+   567→   567→  };
+   568→   568→
+   569→   569→  const filteredRequisitions = requisitions.filter((r) =>
+   570→   570→    r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   571→   571→    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   572→   572→    r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   573→   573→    r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+   574→   574→  );
+   575→   575→
+   576→   576→  // ===================== LOGIN GUARD =====================
+   577→   577→  if (!authUser) {
+   578→   578→    return <LoginPage onLogin={(user) => setAuthUser(user as AuthUser)} />;
+   579→   579→  }
+   580→   580→
+   581→   581→  // ===================== LIST VIEW =====================
+   582→   582→  if (view === "list") {
+   583→   583→    return (
+   584→   584→      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   585→   585→        <div className="bg-white border-b shadow-sm">
+   586→   586→          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+   587→   587→            <div className="flex items-center gap-3">
+   588→   588→              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+   589→   589→                <FileText className="w-5 h-5 text-white" />
+   590→   590→              </div>
+   591→   591→              <div>
+   592→   592→                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+   593→   593→                <p className="text-xs text-slate-500">Information and Technology Department</p>
+   594→   594→              </div>
+   595→   595→            </div>
+   596→   596→            {/* Tab Navigation */}
+   597→   597→            <div className="flex items-center gap-2">
+   598→   598→              <div className="flex bg-slate-100 rounded-lg p-1 mr-3">
+   599→   599→                <button
+   600→   600→                  onClick={() => setMainTab("requisition")}
+   601→   601→                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "requisition" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   602→   602→                >
+   603→   603→                  Requisition
+   604→   604→                </button>
+   605→   605→                {authUser.role === "Admin" && (
+   606→   606→                  <button
+   607→   607→                    onClick={() => setMainTab("users")}
+   608→   608→                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   609→   609→                  >
+   610→   610→                    Admin Panel
+   611→   611→                  </button>
+   612→   612→                )}
+   613→   613→              </div>
+   614→   614→              {mainTab === "requisition" && (
+   615→   615→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   616→   616→                  <Plus className="w-4 h-4" /> New Requisition
+   617→   617→                </Button>
+   618→   618→              )}
+   619→   619→              {/* User Info & Logout */}
+   620→   620→              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+   621→   621→                <div className="flex items-center gap-2">
+   622→   622→                  <UserCircle className="w-5 h-5 text-slate-500" />
+   623→   623→                  <div className="hidden sm:block">
+   624→   624→                    <p className="text-xs font-medium text-slate-700">{authUser.name}</p>
+   625→   625→                    <p className="text-[10px] text-slate-400">{authUser.role}</p>
+   626→   626→                  </div>
+   627→   627→                </div>
+   628→   628→                <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600">
+   629→   629→                  <LogOut className="w-4 h-4" />
+   630→   630→                </Button>
+   631→   631→              </div>
+   632→   632→            </div>
+   633→   633→          </div>
+   634→   634→        </div>
+   635→   635→        <div className="max-w-7xl mx-auto px-4 py-6">
+   636→   636→          {mainTab === "users" ? (
+   637→   637→            <UserManagement />
+   638→   638→          ) : (
+   639→   639→          <>
+   640→   640→          <div className="flex items-center gap-3 mb-4">
+   641→   641→            <div className="relative flex-1 max-w-md">
+   642→   642→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   643→   643→              <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+   644→   644→            </div>
+   645→   645→            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+   646→   646→          </div>
+   647→   647→          {filteredRequisitions.length === 0 ? (
+   648→   648→            <Card className="text-center py-16">
+   649→   649→              <CardContent>
+   650→   650→                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+   651→   651→                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+   652→   652→                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+   653→   653→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2"><Plus className="w-4 h-4" /> New Requisition</Button>
+   654→   654→              </CardContent>
+   655→   655→            </Card>
+   656→   656→          ) : (
+   657→   657→            <Card>
+   658→   658→              <div className="overflow-x-auto">
+   659→   659→                <table className="w-full">
+   660→   660→                  <thead>
+   661→   661→                    <tr className="border-b bg-slate-50">
+   662→   662→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+   663→   663→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+   664→   664→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+   665→   665→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+   666→   666→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+   667→   667→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+   668→   668→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+   669→   669→                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+   670→   670→                    </tr>
+   671→   671→                  </thead>
+   672→   672→                  <tbody>
+   673→   673→                    {filteredRequisitions.map((req, idx) => (
+   674→   674→                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+   675→   675→                        <td className="p-3 text-sm">{idx + 1}</td>
+   676→   676→                        <td className="p-3 text-sm">{req.date}</td>
+   677→   677→                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+   678→   678→                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+   679→   679→                        <td className="p-3 text-sm">{req.category}</td>
+   680→   680→                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+   681→   681→                        <td className="p-3">
+   682→   682→                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+   683→   683→                        </td>
+   684→   684→                        <td className="p-3">
+   685→   685→                          <div className="flex items-center justify-center gap-1">
+   686→   686→                            {authUser.role === "Admin" && (
+   687→   687→                              <Button
+   688→   688→                                variant="ghost"
+   689→   689→                                size="sm"
+   690→   690→                                onClick={async () => {
+   691→   691→                                  const newStatus = req.status === "Read" ? "Draft" : "Read";
+   692→   692→                                  await fetch(`/api/requisitions/${req.id}`, {
+   693→   693→                                    method: "PUT",
+   694→   694→                                    headers: { "Content-Type": "application/json" },
+   695→   695→                                    body: JSON.stringify({ ...req, status: newStatus }),
+   696→   696→                                  });
+   697→   697→                                  await fetchRequisitions();
+   698→   698→                                }}
+   699→   699→                                title={req.status === "Read" ? "Mark as Unread" : "Mark as Read"}
+   700→   700→                                className="h-8 w-8 p-0"
+   701→   701→                              >
+   702→   702→                                {req.status === "Read" ? <EyeOff className="w-4 h-4 text-indigo-500" /> : <Eye className="w-4 h-4 text-slate-400" />}
+   703→   703→                              </Button>
+   704→   704→                            )}
+   705→   705→                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
+   706→   706→                            {(authUser.role === "Admin" || req.status === "Draft") && (
+   707→   707→                              <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
+   708→   708→                            )}
+   709→   709→                            {authUser.role === "Admin" && (
+   710→   710→                              <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+   711→   711→                            )}
+   712→   712→                          </div>
+   713→   713→                        </td>
+   714→   714→                      </tr>
+   715→   715→                    ))}
+   716→   716→                  </tbody>
+   717→   717→                </table>
+   718→   718→              </div>
+   719→   719→            </Card>
+   720→   720→          )}
+   721→   721→          </>
+   722→   722→          )}
+   723→   723→        </div>
+   724→   724→        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   725→   725→          <DialogContent>
+   726→   726→            <DialogHeader><DialogTitle>Delete Requisition</DialogTitle><DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription></DialogHeader>
+   727→   727→            <DialogFooter>
+   728→   728→              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+   729→   729→              <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete</Button>
+   730→   730→            </DialogFooter>
+   731→   731→          </DialogContent>
+   732→   732→        </Dialog>
+   733→   733→      </div>
+   734→   734→    );
+   735→   735→  }
+   736→   736→
+   737→   737→  // ===================== FORM VIEW =====================
+   738→   738→  return (
+   739→   739→    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   740→   740→      <div className="bg-white border-b shadow-sm">
+   741→   741→        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+   742→   742→          <div className="flex items-center gap-3">
+   743→   743→            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1"><ArrowLeft className="w-4 h-4" /> Back</Button>
+   744→   744→            <Separator orientation="vertical" className="h-6" />
+   745→   745→            <h2 className="text-sm font-semibold text-slate-700">{isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}</h2>
+   746→   746→          </div>
+   747→   747→          <div className="flex items-center gap-2">
+   748→   748→            {isEditing && (
+   749→   749→              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   750→   750→                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+   751→   751→              </Button>
+   752→   752→            )}
+   753→   753→            {!isEditing && editId && (authUser.role === "Admin" || currentRequisition.status === "Draft") && (
+   754→   754→              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500"><Edit3 className="w-4 h-4" /> Edit</Button>
+   755→   755→            )}
+   756→   756→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
+   757→   757→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+   758→   758→            {/* User Info & Logout */}
+   759→   759→            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
+   760→   760→              <UserCircle className="w-4 h-4 text-slate-500" />
+   761→   761→              <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+   762→   762→              <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600 h-7 w-7 p-0">
+   763→   763→                <LogOut className="w-3.5 h-3.5" />
+   764→   764→              </Button>
+   765→   765→            </div>
+   766→   766→          </div>
+   767→   767→        </div>
+   768→   768→      </div>
+   769→   769→
+   770→   770→      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+   771→   771→        <Card className="shadow-md border-slate-300">
+   772→   772→          <CardContent className="p-6">
+   773→   773→            {/* Title */}
+   774→   774→            <div className="text-center mb-6">
+   775→   775→              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+   776→   776→              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+   777→   777→            </div>
+   778→   778→
+   779→   779→            {/* Top Section */}
+   780→   780→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+   781→   781→              {/* Left Column */}
+   782→   782→              <div className="space-y-3">
+   783→   783→                <div>
+   784→   784→                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+   785→   785→                  {isEditing ? (
+   786→   786→                    <DatePickerWithAutoClose
+   787→   787→                      value={currentRequisition.date}
+   788→   788→                      onChange={(val) => setCurrentRequisition({ ...currentRequisition, date: val })}
+   789→   789→                    />
+   790→   790→                  ) : (
+   791→   791→                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+   792→   792→                  )}
+   793→   793→                </div>
+   794→   794→                <div className="pt-2"><p className="text-xs font-semibold text-slate-500">To,</p></div>
+   795→   795→                <div>
+   796→   796→                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+   797→   797→                  {isEditing && authUser?.role !== "User" ? (
+   798→   798→                    <Input value={currentRequisition.organizationName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })} className="mt-1" />
+   799→   799→                  ) : (
+   800→   800→                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+   801→   801→                  )}
+   802→   802→                </div>
+   803→   803→                <div>
+   804→   804→                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+   805→   805→                  {isEditing && authUser?.role !== "User" ? (
+   806→   806→                    <Input value={currentRequisition.department} onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })} className="mt-1" />
+   807→   807→                  ) : (
+   808→   808→                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+   809→   809→                  )}
+   810→   810→                </div>
+   811→   811→                <div>
+   812→   812→                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+   813→   813→                  {isEditing && authUser?.role !== "User" ? (
+   814→   814→                    <Textarea value={currentRequisition.address} onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })} className="mt-1" rows={2} />
+   815→   815→                  ) : (
+   816→   816→                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+   817→   817→                  )}
+   818→   818→                </div>
+   819→   819→              </div>
+   820→   820→
+   821→   821→              {/* Right Column - Applicant Table */}
+   822→   822→              <div className="border border-slate-300 rounded-md overflow-hidden">
+   823→   823→                <table className="w-full text-sm">
+   824→   824→                  <tbody>
+   825→   825→                    <tr className="border-b border-slate-200">
+   826→   826→                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+   827→   827→                      <td className="p-2">
+   828→   828→                        {isEditing ? (
+   829→   829→                          <Input value={currentRequisition.applicantName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })} className="h-7 text-sm" />
+   830→   830→                        ) : (
+   831→   831→                          <span>{currentRequisition.applicantName}</span>
+   832→   832→                        )}
+   833→   833→                      </td>
+   834→   834→                    </tr>
+   835→   835→                    {/* Applicant Department - DROPDOWN */}
+   836→   836→                    <tr className="border-b border-slate-200">
+   837→   837→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+   838→   838→                      <td className="p-2">
+   839→   839→                        {isEditing ? (
+   840→   840→                          <DropdownWithManage
+   841→   841→                            label="Department"
+   842→   842→                            type="department"
+   843→   843→                            value={currentRequisition.applicantDepartment}
+   844→   844→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
+   845→   845→                            disabled={!isEditing}
+   846→   846→                            isAdmin={authUser?.role === "Admin"}
+   847→   847→                          />
+   848→   848→                        ) : (
+   849→   849→                          <span>{currentRequisition.applicantDepartment}</span>
+   850→   850→                        )}
+   851→   851→                      </td>
+   852→   852→                    </tr>
+   853→   853→                    <tr className="border-b border-slate-200">
+   854→   854→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+   855→   855→                      <td className="p-2">
+   856→   856→                        {isEditing ? (
+   857→   857→                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })} className="h-7 text-sm font-mono" />
+   858→   858→                        ) : (
+   859→   859→                          <span className="font-mono">{currentRequisition.employeeId}</span>
+   860→   860→                        )}
+   861→   861→                      </td>
+   862→   862→                    </tr>
+   863→   863→                    {/* Branch Name - DROPDOWN */}
+   864→   864→                    <tr className="border-b border-slate-200">
+   865→   865→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+   866→   866→                      <td className="p-2">
+   867→   867→                        {isEditing ? (
+   868→   868→                          <DropdownWithManage
+   869→   869→                            label="Branch"
+   870→   870→                            type="branch"
+   871→   871→                            value={currentRequisition.branchName}
+   872→   872→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
+   873→   873→                            disabled={!isEditing}
+   874→   874→                            isAdmin={authUser?.role === "Admin"}
+   875→   875→                          />
+   876→   876→                        ) : (
+   877→   877→                          <span>{currentRequisition.branchName}</span>
+   878→   878→                        )}
+   879→   879→                      </td>
+   880→   880→                    </tr>
+   881→   881→                    {/* Address - DROPDOWN */}
+   882→   882→                    <tr className="border-b border-slate-200">
+   883→   883→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+   884→   884→                      <td className="p-2">
+   885→   885→                        {isEditing ? (
+   886→   886→                          <DropdownWithManage
+   887→   887→                            label="Address"
+   888→   888→                            type="address"
+   889→   889→                            value={currentRequisition.applicantAddress}
+   890→   890→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
+   891→   891→                            disabled={!isEditing}
+   892→   892→                            isAdmin={authUser?.role === "Admin"}
+   893→   893→                          />
+   894→   894→                        ) : (
+   895→   895→                          <span>{currentRequisition.applicantAddress}</span>
+   896→   896→                        )}
+   897→   897→                      </td>
+   898→   898→                    </tr>
+   899→   899→                    <tr>
+   900→   900→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+   901→   901→                      <td className="p-2">
+   902→   902→                        {isEditing ? (
+   903→   903→                          <Input value={currentRequisition.contact} onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })} className="h-7 text-sm" />
+   904→   904→                        ) : (
+   905→   905→                          <span>{currentRequisition.contact}</span>
+   906→   906→                        )}
+   907→   907→                      </td>
+   908→   908→                    </tr>
+   909→   909→                  </tbody>
+   910→   910→                </table>
+   911→   911→              </div>
+   912→   912→            </div>
+   913→   913→
+   914→   914→            {/* Category Selection Bar */}
+   915→   915→            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+   916→   916→              <div className="flex flex-wrap gap-4 items-center">
+   917→   917→                {CATEGORIES.map((cat) => (
+   918→   918→                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+   919→   919→                    <Checkbox checked={currentRequisition.category === cat} onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })} disabled={!isEditing} />
+   920→   920→                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+   921→   921→                  </label>
+   922→   922→                ))}
+   923→   923→              </div>
+   924→   924→            </div>
+   925→   925→
+   926→   926→            {/* Equipment Table */}
+   927→   927→            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+   928→   928→              <table className="w-full text-sm">
+   929→   929→                <thead>
+   930→   930→                  <tr className="bg-slate-200 border-b border-slate-400">
+   931→   931→                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+   932→   932→                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+   933→   933→                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+   934→   934→                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+   935→   935→                    <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
+   936→   936→                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+   937→   937→                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+   938→   938→                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+   939→   939→                  </tr>
+   940→   940→                </thead>
+   941→   941→                <tbody>
+   942→   942→                  {currentRequisition.items.map((item, index) => (
+   943→   943→                    <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"} ${item.selected ? "font-bold bg-blue-50" : ""}`}>
+   944→   944→                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+   945→   945→                      <td className="p-2 text-center"><Checkbox checked={item.selected} onCheckedChange={(checked) => updateItem(index, "selected", !!checked)} /></td>
+   946→   946→                      <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
+   947→   947→                      <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
+   948→   948→                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-7 text-xs text-center" min={0} /> : <span className="text-xs text-center block">{item.qty || "—"}</span>}</td>
+   949→   949→                      <td className="p-2">
+   950→   950→                        {isEditing ? (
+   951→   951→                          <Select value={item.condition} onValueChange={(val) => updateItem(index, "condition", val)}>
+   952→   952→                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+   953→   953→                            <SelectContent>{CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+   954→   954→                          </Select>
+   955→   955→                        ) : (
+   956→   956→                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+   957→   957→                        )}
+   958→   958→                      </td>
+   959→   959→                      <td className="p-2">{isEditing ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
+   960→   960→                      {isEditing && (
+   961→   961→                        <td className="p-1 text-center"><Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="h-6 w-6 p-0 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></Button></td>
+   962→   962→                      )}
+   963→   963→                    </tr>
+   964→   964→                  ))}
+   965→   965→                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+   966→   966→                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
+   967→   967→                    <td className="p-2 text-right font-bold text-sm">৳{currentRequisition.totalAmount.toLocaleString()}</td>
+   968→   968→                    {isEditing && <td></td>}
+   969→   969→                  </tr>
+   970→   970→                </tbody>
+   971→   971→              </table>
+   972→   972→            </div>
+   973→   973→
+   974→   974→            {isEditing && (
+   975→   975→              <div className="mb-6"><Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add Row</Button></div>
+   976→   976→            )}
+   977→   977→
+   978→   978→            {/* Reason */}
+   979→   979→            <div className="mb-8">
+   980→   980→              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+   981→   981→              {isEditing ? (
+   982→   982→                <Textarea value={currentRequisition.reason} onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })} className="min-h-[80px]" placeholder="Write your reason here..." />
+   983→   983→              ) : (
+   984→   984→                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">{currentRequisition.reason || "—"}</div>
+   985→   985→              )}
+   986→   986→            </div>
+   987→   987→
+   988→   988→            {/* Status */}
+   989→   989→            {editId && (
+   990→   990→              <div className="mb-8">
+   991→   991→                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+   992→   992→                {isEditing && (authUser?.role === "Admin" || authUser?.role === "User") ? (
+   993→   993→                  <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
+   994→   994→                    <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
+   995→   995→                    <SelectContent>
+   996→   996→                      <SelectItem value="Draft">Draft</SelectItem>
+   997→   997→                      <SelectItem value="Submitted">Submitted</SelectItem>
+   998→   998→                      {authUser?.role === "Admin" && (
+   999→   999→                        <>
+  1000→  1000→                          <SelectItem value="Read">Read</SelectItem>
+  1001→  1001→                          <SelectItem value="Approved">Approved</SelectItem>
+  1002→  1002→                          <SelectItem value="Rejected">Rejected</SelectItem>
+  1003→  1003→                        </>
+  1004→  1004→                      )}
+  1005→  1005→                    </SelectContent>
+  1006→  1006→                  </Select>
+  1007→  1007→                ) : (
+  1008→  1008→                  <div className="mt-1"><span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>{currentRequisition.status}</span></div>
+  1009→  1009→                )}
+  1010→  1010→              </div>
+  1011→  1011→            )}
+  1012→  1012→
+  1013→  1013→            {/* Signatures */}
+  1014→  1014→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+  1015→  1015→              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+  1016→  1016→                <div key={role} className="text-center">
+  1017→  1017→                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2"><p className="text-xs font-semibold text-slate-600">{role}</p></div>
+  1018→  1018→                </div>
+  1019→  1019→              ))}
+  1020→  1020→            </div>
+  1021→  1021→          </CardContent>
+  1022→  1022→        </Card>
+  1023→  1023→      </div>
+  1024→  1024→    </div>
+  1025→  1025→  );
+  1026→  1026→}
+  1027→  1027→

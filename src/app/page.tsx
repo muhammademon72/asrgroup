@@ -441,7 +441,15 @@ export default function EquipmentRequisitionSystem() {
     try {
       const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
       const method = editId ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...currentRequisition, createdByEmail: authUser?.email || "" }) });
+      // Preserve original createdByEmail on edit (don't overwrite with admin's email)
+      // Only set createdByEmail on new requisition creation
+      const bodyData = {
+        ...currentRequisition,
+        createdByEmail: editId
+          ? (currentRequisition.createdByEmail || authUser?.email || "")
+          : (authUser?.email || "")
+      };
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData) });
       if (res.ok) {
         toast({ title: editId ? "Updated Successfully" : "Saved Successfully", description: `Requisition has been ${editId ? "updated" : "saved"}` });
         await fetchRequisitions();
