@@ -1117,7 +1117,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.applicantDepartment}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
                             disabled={!isEditing}
-                            isAdmin={authUser?.role === "Admin"}
+                            isAdmin={false}
                           />
                         ) : (
                           <span>{currentRequisition.applicantDepartment}</span>
@@ -1145,7 +1145,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.branchName}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
                             disabled={!isEditing}
-                            isAdmin={authUser?.role === "Admin"}
+                            isAdmin={false}
                           />
                         ) : (
                           <span>{currentRequisition.branchName}</span>
@@ -1163,7 +1163,7 @@ ${req.items.map((item) => `<tr>
                             value={currentRequisition.applicantAddress}
                             onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
                             disabled={!isEditing}
-                            isAdmin={authUser?.role === "Admin"}
+                            isAdmin={false}
                           />
                         ) : (
                           <span>{currentRequisition.applicantAddress}</span>
