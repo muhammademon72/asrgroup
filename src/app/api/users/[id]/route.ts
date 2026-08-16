@@ -36,6 +36,7 @@ export async function PUT(
         branch: body.branch,
         role: body.role,
         status: body.status,
+        ...(body.password ? { password: body.password } : {}),
       },
     });
     return NextResponse.json(user);

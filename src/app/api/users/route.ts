@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: body.name,
         email: body.email,
+        password: body.password || "123456",
         phone: body.phone || "",
         employeeId: body.employeeId || "",
         department: body.department || "",
