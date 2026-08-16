@@ -49,8 +49,10 @@ export async function POST(req: NextRequest) {
       user: userWithoutPassword,
       message: "Login successful",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    const errorMsg = error?.message || String(error);
+    const errorStack = error?.meta || {};
+    return NextResponse.json({ error: "Login failed", debug: errorMsg, meta: errorStack, env: { hasTursoUrl: !!process.env.TURSO_DATABASE_URL, hasTursoToken: !!process.env.TURSO_AUTH_TOKEN, hasDbUrl: !!process.env.DATABASE_URL } }, { status: 500 });
   }
 }
