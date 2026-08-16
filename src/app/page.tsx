@@ -1230,7 +1230,7 @@ ${req.items.map((item) => `<tr>
                           <span className="text-xs block text-center">{item.condition || "—"}</span>
                         )}
                       </td>
-                      <td className="p-2">{isEditing ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
+                      <td className="p-2">{isEditing ? (authUser?.role === "Admin" ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right text-slate-400">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>) : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
                       {isEditing && (
                         <td className="p-1 text-center"><Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="h-6 w-6 p-0 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></Button></td>
                       )}
