@@ -18,16 +18,10 @@ function createPrismaClient() {
     return new PrismaClient({ adapter })
   }
 
-  // Fallback: local SQLite via Prisma direct connection
-  const dbUrl = process.env.DATABASE_URL
-  if (dbUrl && dbUrl.startsWith('file:')) {
-    return new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['query'] : [],
-    })
-  }
-
-  // No URL available (build time) - return basic client
-  return new PrismaClient()
+  // Fallback: local SQLite via libsql file adapter (Prisma v7 always requires an adapter)
+  const dbUrl = process.env.DATABASE_URL || 'file:./dev.db'
+  const adapter = new PrismaLibSql({ url: dbUrl })
+  return new PrismaClient({ adapter })
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient()
