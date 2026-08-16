@@ -1206,7 +1206,7 @@ ${req.items.map((item) => `<tr>
                     <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
                     <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
                     <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
-                    <th className="p-2 text-center font-bold text-xs w-[60px]">QTY</th>
+                    <th className="p-2 text-center font-bold text-xs w-[80px]">QTY</th>
                     <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
                     <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
                     {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
@@ -1219,7 +1219,7 @@ ${req.items.map((item) => `<tr>
                       <td className="p-2 text-center"><Checkbox checked={item.selected} onCheckedChange={(checked) => updateItem(index, "selected", !!checked)} /></td>
                       <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
                       <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
-                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-7 text-xs text-center" min={0} /> : <span className="text-xs text-center block">{item.qty || "—"}</span>}</td>
+                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-8 text-sm text-center w-[72px]" min={0} /> : <span className="text-sm text-center block">{item.qty || "—"}</span>}</td>
                       <td className="p-2">
                         {isEditing ? (
                           <Select value={item.condition} onValueChange={(val) => updateItem(index, "condition", val)}>
