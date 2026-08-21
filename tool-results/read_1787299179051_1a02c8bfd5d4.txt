@@ -1,0 +1,503 @@
+   798→<table class="equipment-table"><thead><tr>
+   799→<th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
+   800→</tr></thead><tbody>
+   801→${req.items.map((item) => `<tr>
+   802→<td style="text-align:center">${item.sl}</td>
+   803→<td style="text-align:center">${item.selected ? "✓" : ""}</td>
+   804→<td>${item.equipmentName}</td><td>${item.description}</td>
+   805→<td style="text-align:center">${item.qty || "-"}</td>
+   806→<td style="text-align:center">${item.condition || "-"}</td>
+   807→<td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+   808→</tr>`).join("")}
+   809→<tr class="total-row"><td colspan="6" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
+   810→</tbody></table>
+   811→<div class="reason-section"><h3>PLEASE WRITE A REASON :</h3><div class="reason-text">${req.reason || "-"}</div></div>
+   812→<div class="signature-section">
+   813→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Applicant</div></div>
+   814→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Manager / In-Charge</div></div>
+   815→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Recommend by</div></div>
+   816→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Authority</div></div>
+   817→</div></div></body></html>`;
+   818→
+   819→  const getStatusBadge = (status: string) => {
+   820→    const colors: Record<string, string> = {
+   821→      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+   822→      Read: "bg-indigo-100 text-indigo-800 border-indigo-300",
+   823→      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+   824→      Approved: "bg-green-100 text-green-800 border-green-300",
+   825→      Rejected: "bg-red-100 text-red-800 border-red-300",
+   826→    };
+   827→    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+   828→  };
+   829→
+   830→  const filteredRequisitions = requisitions.filter((r) =>
+   831→    r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   832→    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   833→    r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   834→    r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+   835→  );
+   836→
+   837→  // ===================== LOGIN GUARD =====================
+   838→  if (!authUser) {
+   839→    return <LoginPage onLogin={(user) => setAuthUser(user as AuthUser)} />;
+   840→  }
+   841→
+   842→  // ===================== LIST VIEW =====================
+   843→  if (view === "list") {
+   844→    return (
+   845→      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   846→        <div className="bg-white border-b shadow-sm">
+   847→          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+   848→            <div className="flex items-center gap-3">
+   849→              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+   850→                <FileText className="w-5 h-5 text-white" />
+   851→              </div>
+   852→              <div>
+   853→                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+   854→                <p className="text-xs text-slate-500">Information and Technology Department</p>
+   855→              </div>
+   856→            </div>
+   857→            {/* Tab Navigation */}
+   858→            <div className="flex items-center gap-2">
+   859→              <div className="flex bg-slate-100 rounded-lg p-1 mr-3">
+   860→                <button
+   861→                  onClick={() => setMainTab("requisition")}
+   862→                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "requisition" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   863→                >
+   864→                  Requisition
+   865→                </button>
+   866→                {authUser.role === "Admin" && (
+   867→                  <>
+   868→                    <button
+   869→                      onClick={() => setMainTab("department")}
+   870→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "department" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   871→                    >
+   872→                      <Network className="w-3.5 h-3.5" /> Department
+   873→                    </button>
+   874→                    <button
+   875→                      onClick={() => setMainTab("branch")}
+   876→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "branch" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   877→                    >
+   878→                      <Building2 className="w-3.5 h-3.5" /> Branch
+   879→                    </button>
+   880→                    <button
+   881→                      onClick={() => setMainTab("address")}
+   882→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "address" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   883→                    >
+   884→                      <MapPin className="w-3.5 h-3.5" /> Address
+   885→                    </button>
+   886→                  </>
+   887→                )}
+   888→                {authUser.role === "Admin" && (
+   889→                  <button
+   890→                    onClick={() => setMainTab("users")}
+   891→                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   892→                  >
+   893→                    Admin Panel
+   894→                  </button>
+   895→                )}
+   896→              </div>
+   897→              {mainTab === "requisition" && (
+   898→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   899→                  <Plus className="w-4 h-4" /> New Requisition
+   900→                </Button>
+   901→              )}
+   902→              {/* User Info & Logout */}
+   903→              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+   904→                <div className="flex items-center gap-2">
+   905→                  <UserCircle className="w-5 h-5 text-slate-500" />
+   906→                  <div className="hidden sm:block">
+   907→                    <p className="text-xs font-medium text-slate-700">{authUser.name}</p>
+   908→                    <p className="text-[10px] text-slate-400">{authUser.role}</p>
+   909→                  </div>
+   910→                </div>
+   911→                <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600">
+   912→                  <LogOut className="w-4 h-4" />
+   913→                </Button>
+   914→              </div>
+   915→            </div>
+   916→          </div>
+   917→        </div>
+   918→        <div className="max-w-7xl mx-auto px-4 py-6">
+   919→          {mainTab === "users" ? (
+   920→            <UserManagement />
+   921→          ) : mainTab === "department" ? (
+   922→            <DropdownManagement type="department" label="Department" icon={<Network className="w-5 h-5" />} />
+   923→          ) : mainTab === "branch" ? (
+   924→            <DropdownManagement type="branch" label="Branch" icon={<Building2 className="w-5 h-5" />} />
+   925→          ) : mainTab === "address" ? (
+   926→            <DropdownManagement type="address" label="Address" icon={<MapPin className="w-5 h-5" />} />
+   927→          ) : (
+   928→          <>
+   929→          <div className="flex items-center gap-3 mb-4">
+   930→            <div className="relative flex-1 max-w-md">
+   931→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   932→              <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+   933→            </div>
+   934→            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+   935→          </div>
+   936→          {filteredRequisitions.length === 0 ? (
+   937→            <Card className="text-center py-16">
+   938→              <CardContent>
+   939→                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+   940→                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+   941→                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+   942→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2"><Plus className="w-4 h-4" /> New Requisition</Button>
+   943→              </CardContent>
+   944→            </Card>
+   945→          ) : (
+   946→            <Card>
+   947→              <div className="overflow-x-auto">
+   948→                <table className="w-full">
+   949→                  <thead>
+   950→                    <tr className="border-b bg-slate-50">
+   951→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+   952→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+   953→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+   954→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+   955→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+   956→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+   957→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+   958→                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+   959→                    </tr>
+   960→                  </thead>
+   961→                  <tbody>
+   962→                    {filteredRequisitions.map((req, idx) => (
+   963→                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+   964→                        <td className="p-3 text-sm">{idx + 1}</td>
+   965→                        <td className="p-3 text-sm">{req.date}</td>
+   966→                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+   967→                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+   968→                        <td className="p-3 text-sm">{req.category}</td>
+   969→                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+   970→                        <td className="p-3">
+   971→                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+   972→                        </td>
+   973→                        <td className="p-3">
+   974→                          <div className="flex items-center justify-center gap-1">
+   975→                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
+   976→                            {(authUser.role === "Admin" || req.status === "Draft") && (
+   977→                              <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
+   978→                            )}
+   979→                            <Button variant="ghost" size="sm" onClick={() => handleCopyToNew(req)} title="Copy to New Requisition" className="h-8 w-8 p-0"><Copy className="w-4 h-4 text-emerald-600" /></Button>
+   980→                            {authUser.role === "Admin" && (
+   981→                              <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+   982→                            )}
+   983→                          </div>
+   984→                        </td>
+   985→                      </tr>
+   986→                    ))}
+   987→                  </tbody>
+   988→                </table>
+   989→              </div>
+   990→            </Card>
+   991→          )}
+   992→          </>
+   993→          )}
+   994→        </div>
+   995→        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   996→          <DialogContent>
+   997→            <DialogHeader><DialogTitle>Delete Requisition</DialogTitle><DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription></DialogHeader>
+   998→            <DialogFooter>
+   999→              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+  1000→              <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete</Button>
+  1001→            </DialogFooter>
+  1002→          </DialogContent>
+  1003→        </Dialog>
+  1004→      </div>
+  1005→    );
+  1006→  }
+  1007→
+  1008→  // ===================== FORM VIEW =====================
+  1009→  return (
+  1010→    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+  1011→      <div className="bg-white border-b shadow-sm">
+  1012→        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+  1013→          <div className="flex items-center gap-3">
+  1014→            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1"><ArrowLeft className="w-4 h-4" /> Back</Button>
+  1015→            <Separator orientation="vertical" className="h-6" />
+  1016→            <h2 className="text-sm font-semibold text-slate-700">{isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}</h2>
+  1017→          </div>
+  1018→          <div className="flex items-center gap-2">
+  1019→            {isEditing && (
+  1020→              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+  1021→                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+  1022→              </Button>
+  1023→            )}
+  1024→            {!isEditing && editId && (authUser.role === "Admin" || currentRequisition.status === "Draft") && (
+  1025→              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500"><Edit3 className="w-4 h-4" /> Edit</Button>
+  1026→            )}
+  1027→            {editId && (
+  1028→              <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
+  1029→            )}
+  1030→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
+  1031→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+  1032→            {/* User Info & Logout */}
+  1033→            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
+  1034→              <UserCircle className="w-4 h-4 text-slate-500" />
+  1035→              <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+  1036→              <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600 h-7 w-7 p-0">
+  1037→                <LogOut className="w-3.5 h-3.5" />
+  1038→              </Button>
+  1039→            </div>
+  1040→          </div>
+  1041→        </div>
+  1042→      </div>
+  1043→
+  1044→      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+  1045→        <Card className="shadow-md border-slate-300">
+  1046→          <CardContent className="p-6">
+  1047→            {/* Title */}
+  1048→            <div className="text-center mb-6">
+  1049→              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+  1050→              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+  1051→            </div>
+  1052→
+  1053→            {/* Top Section */}
+  1054→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  1055→              {/* Left Column */}
+  1056→              <div className="space-y-3">
+  1057→                <div>
+  1058→                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+  1059→                  {isEditing ? (
+  1060→                    <DatePickerWithAutoClose
+  1061→                      value={currentRequisition.date}
+  1062→                      onChange={(val) => setCurrentRequisition({ ...currentRequisition, date: val })}
+  1063→                    />
+  1064→                  ) : (
+  1065→                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+  1066→                  )}
+  1067→                </div>
+  1068→                <div className="pt-2"><p className="text-xs font-semibold text-slate-500">To,</p></div>
+  1069→                <div>
+  1070→                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+  1071→                  {isEditing && authUser?.role !== "User" ? (
+  1072→                    <Input value={currentRequisition.organizationName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })} className="mt-1" />
+  1073→                  ) : (
+  1074→                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+  1075→                  )}
+  1076→                </div>
+  1077→                <div>
+  1078→                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+  1079→                  {isEditing && authUser?.role !== "User" ? (
+  1080→                    <Input value={currentRequisition.department} onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })} className="mt-1" />
+  1081→                  ) : (
+  1082→                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+  1083→                  )}
+  1084→                </div>
+  1085→                <div>
+  1086→                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+  1087→                  {isEditing && authUser?.role !== "User" ? (
+  1088→                    <Textarea value={currentRequisition.address} onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })} className="mt-1" rows={2} />
+  1089→                  ) : (
+  1090→                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+  1091→                  )}
+  1092→                </div>
+  1093→              </div>
+  1094→
+  1095→              {/* Right Column - Applicant Table */}
+  1096→              <div className="border border-slate-300 rounded-md overflow-hidden">
+  1097→                <table className="w-full text-sm">
+  1098→                  <tbody>
+  1099→                    <tr className="border-b border-slate-200">
+  1100→                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+  1101→                      <td className="p-2">
+  1102→                        {isEditing ? (
+  1103→                          <Input value={currentRequisition.applicantName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })} className="h-7 text-sm" />
+  1104→                        ) : (
+  1105→                          <span>{currentRequisition.applicantName}</span>
+  1106→                        )}
+  1107→                      </td>
+  1108→                    </tr>
+  1109→                    {/* Applicant Department - DROPDOWN */}
+  1110→                    <tr className="border-b border-slate-200">
+  1111→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+  1112→                      <td className="p-2">
+  1113→                        {isEditing ? (
+  1114→                          <DropdownWithManage
+  1115→                            label="Department"
+  1116→                            type="department"
+  1117→                            value={currentRequisition.applicantDepartment}
+  1118→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
+  1119→                            disabled={!isEditing}
+  1120→                            isAdmin={false}
+  1121→                          />
+  1122→                        ) : (
+  1123→                          <span>{currentRequisition.applicantDepartment}</span>
+  1124→                        )}
+  1125→                      </td>
+  1126→                    </tr>
+  1127→                    <tr className="border-b border-slate-200">
+  1128→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+  1129→                      <td className="p-2">
+  1130→                        {isEditing ? (
+  1131→                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })} className="h-7 text-sm font-mono" />
+  1132→                        ) : (
+  1133→                          <span className="font-mono">{currentRequisition.employeeId}</span>
+  1134→                        )}
+  1135→                      </td>
+  1136→                    </tr>
+  1137→                    {/* Branch Name - DROPDOWN */}
+  1138→                    <tr className="border-b border-slate-200">
+  1139→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+  1140→                      <td className="p-2">
+  1141→                        {isEditing ? (
+  1142→                          <DropdownWithManage
+  1143→                            label="Branch"
+  1144→                            type="branch"
+  1145→                            value={currentRequisition.branchName}
+  1146→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
+  1147→                            disabled={!isEditing}
+  1148→                            isAdmin={false}
+  1149→                          />
+  1150→                        ) : (
+  1151→                          <span>{currentRequisition.branchName}</span>
+  1152→                        )}
+  1153→                      </td>
+  1154→                    </tr>
+  1155→                    {/* Address - DROPDOWN */}
+  1156→                    <tr className="border-b border-slate-200">
+  1157→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+  1158→                      <td className="p-2">
+  1159→                        {isEditing ? (
+  1160→                          <DropdownWithManage
+  1161→                            label="Address"
+  1162→                            type="address"
+  1163→                            value={currentRequisition.applicantAddress}
+  1164→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
+  1165→                            disabled={!isEditing}
+  1166→                            isAdmin={false}
+  1167→                          />
+  1168→                        ) : (
+  1169→                          <span>{currentRequisition.applicantAddress}</span>
+  1170→                        )}
+  1171→                      </td>
+  1172→                    </tr>
+  1173→                    <tr>
+  1174→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+  1175→                      <td className="p-2">
+  1176→                        {isEditing ? (
+  1177→                          <Input value={currentRequisition.contact} onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })} className="h-7 text-sm" />
+  1178→                        ) : (
+  1179→                          <span>{currentRequisition.contact}</span>
+  1180→                        )}
+  1181→                      </td>
+  1182→                    </tr>
+  1183→                  </tbody>
+  1184→                </table>
+  1185→              </div>
+  1186→            </div>
+  1187→
+  1188→            {/* Category Selection Bar */}
+  1189→            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+  1190→              <div className="flex flex-wrap gap-4 items-center">
+  1191→                {CATEGORIES.map((cat) => (
+  1192→                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+  1193→                    <Checkbox checked={currentRequisition.category === cat} onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })} disabled={!isEditing} />
+  1194→                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+  1195→                  </label>
+  1196→                ))}
+  1197→              </div>
+  1198→            </div>
+  1199→
+  1200→            {/* Equipment Table */}
+  1201→            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+  1202→              <table className="w-full text-sm">
+  1203→                <thead>
+  1204→                  <tr className="bg-slate-200 border-b border-slate-400">
+  1205→                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+  1206→                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+  1207→                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+  1208→                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+  1209→                    <th className="p-2 text-center font-bold text-xs w-[80px]">QTY</th>
+  1210→                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+  1211→                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+  1212→                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+  1213→                  </tr>
+  1214→                </thead>
+  1215→                <tbody>
+  1216→                  {currentRequisition.items.map((item, index) => (
+  1217→                    <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"} ${item.selected ? "font-bold bg-blue-50" : ""}`}>
+  1218→                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+  1219→                      <td className="p-2 text-center"><Checkbox checked={item.selected} onCheckedChange={(checked) => updateItem(index, "selected", !!checked)} /></td>
+  1220→                      <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
+  1221→                      <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
+  1222→                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-8 text-sm text-center w-[72px]" min={0} /> : <span className="text-sm text-center block">{item.qty || "—"}</span>}</td>
+  1223→                      <td className="p-2">
+  1224→                        {isEditing ? (
+  1225→                          <Select value={item.condition} onValueChange={(val) => updateItem(index, "condition", val)}>
+  1226→                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+  1227→                            <SelectContent>{CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+  1228→                          </Select>
+  1229→                        ) : (
+  1230→                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+  1231→                        )}
+  1232→                      </td>
+  1233→                      <td className="p-2">{isEditing ? (authUser?.role === "Admin" ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right text-slate-400">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>) : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
+  1234→                      {isEditing && (
+  1235→                        <td className="p-1 text-center"><Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="h-6 w-6 p-0 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></Button></td>
+  1236→                      )}
+  1237→                    </tr>
+  1238→                  ))}
+  1239→                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+  1240→                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
+  1241→                    <td className="p-2 text-right font-bold text-sm">৳{currentRequisition.totalAmount.toLocaleString()}</td>
+  1242→                    {isEditing && <td></td>}
+  1243→                  </tr>
+  1244→                </tbody>
+  1245→              </table>
+  1246→            </div>
+  1247→
+  1248→            {isEditing && (
+  1249→              <div className="mb-6"><Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add Row</Button></div>
+  1250→            )}
+  1251→
+  1252→            {/* Reason */}
+  1253→            <div className="mb-8">
+  1254→              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+  1255→              {isEditing ? (
+  1256→                <Textarea value={currentRequisition.reason} onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })} className="min-h-[80px]" placeholder="Write your reason here..." />
+  1257→              ) : (
+  1258→                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">{currentRequisition.reason || "—"}</div>
+  1259→              )}
+  1260→            </div>
+  1261→
+  1262→            {/* Status */}
+  1263→            {editId && (
+  1264→              <div className="mb-8">
+  1265→                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+  1266→                {isEditing && (authUser?.role === "Admin" || authUser?.role === "User") ? (
+  1267→                  <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
+  1268→                    <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
+  1269→                    <SelectContent>
+  1270→                      <SelectItem value="Draft">Draft</SelectItem>
+  1271→                      <SelectItem value="Submitted">Submitted</SelectItem>
+  1272→                      {authUser?.role === "Admin" && (
+  1273→                        <>
+  1274→                          <SelectItem value="Approved">Approved</SelectItem>
+  1275→                          <SelectItem value="Rejected">Rejected</SelectItem>
+  1276→                        </>
+  1277→                      )}
+  1278→                    </SelectContent>
+  1279→                  </Select>
+  1280→                ) : (
+  1281→                  <div className="mt-1"><span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>{currentRequisition.status}</span></div>
+  1282→                )}
+  1283→              </div>
+  1284→            )}
+  1285→
+  1286→            {/* Signatures */}
+  1287→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+  1288→              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+  1289→                <div key={role} className="text-center">
+  1290→                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2"><p className="text-xs font-semibold text-slate-600">{role}</p></div>
+  1291→                </div>
+  1292→              ))}
+  1293→            </div>
+  1294→          </CardContent>
+  1295→        </Card>
+  1296→      </div>
+  1297→    </div>
+  1298→  );
+  1299→}
+  1300→
