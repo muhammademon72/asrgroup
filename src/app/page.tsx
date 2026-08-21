@@ -793,7 +793,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a
 <tr><td>Contact</td><td>${req.contact}</td></tr>
 </table></div></div>
 <div class="category-bar">
-${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+${CATEGORIES.map((cat) => `<div class="category-item"${req.category === cat ? ' style="font-weight:bold"' : ''}><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
 </div>
 <table class="equipment-table"><thead><tr>
 <th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
@@ -1191,7 +1191,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                 {CATEGORIES.map((cat) => (
                   <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={currentRequisition.category === cat} onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })} disabled={!isEditing} />
-                    <span className={currentRequisition.category === cat ? "font-semibold" : ""}>{cat}</span>
+                    <span className={currentRequisition.category === cat ? "font-bold text-slate-800" : "text-slate-500"}>{cat}</span>
                   </label>
                 ))}
               </div>
