@@ -798,7 +798,7 @@ ${CATEGORIES.map((cat) => `<div class="category-item"><input type="checkbox" ${r
 <table class="equipment-table"><thead><tr>
 <th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
 </tr></thead><tbody>
-${req.items.map((item) => `<tr>
+${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''}>
 <td style="text-align:center">${item.sl}</td>
 <td style="text-align:center">${item.selected ? "✓" : ""}</td>
 <td>${item.equipmentName}</td><td>${item.description}</td>
