@@ -731,6 +731,19 @@ export default function EquipmentRequisitionSystem() {
     } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
   };
 
+  const downloadPdf = () => {
+    const html = generatePrintHTML(currentRequisition);
+    const blob = new Blob([html], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const openPrintWindow = () => {
     const pw = window.open("", "_blank");
     if (!pw) return;
@@ -1027,7 +1040,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             {editId && (
               <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
             )}
-            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
+            <Button variant="outline" onClick={downloadPdf} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
             {/* User Info & Logout */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
