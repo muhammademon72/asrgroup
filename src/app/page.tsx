@@ -6,7 +6,6 @@ import {
   Save,
   Edit3,
   Trash2,
-  FileDown,
   Printer,
   Plus,
   ArrowLeft,
@@ -754,53 +753,6 @@ export default function EquipmentRequisitionSystem() {
     } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
   };
 
-  const [pdfLoading, setPdfLoading] = useState(false);
-
-  const downloadPdf = async () => {
-    if (pdfLoading) return;
-    setPdfLoading(true);
-    await new Promise(r => setTimeout(r, 80));
-    try {
-      const { jsPDF } = await import('jspdf');
-      const html = generatePrintHTML(currentRequisition);
-
-      // Create hidden iframe to render the HTML
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
-      document.body.appendChild(iframe);
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      iframeDoc?.open();
-      iframeDoc?.write(html);
-      iframeDoc?.close();
-      await new Promise(r => setTimeout(r, 400));
-
-      const body = iframeDoc?.body;
-      if (!body) throw new Error('PDF render failed');
-
-      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-
-      await doc.html(body, {
-        x: 0,
-        y: 0,
-        width: 210,
-        windowWidth: 794,
-        margin: [10, 10, 10, 10],
-        autoPaging: 'slice',
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-      });
-
-      document.body.removeChild(iframe);
-
-      const filename = `Requisition_${currentRequisition.id || 'draft'}_${(currentRequisition.applicantName || 'requisition').replace(/\s+/g, '_')}.pdf`;
-      doc.save(filename);
-      toast({ title: 'PDF Downloaded', description: filename });
-    } catch (error: any) {
-      console.error('PDF generation failed:', error);
-      toast({ title: 'PDF Failed', description: error.message || 'Could not generate PDF.', variant: 'destructive' });
-    } finally {
-      setPdfLoading(false);
-    }
-  };
 
   const openPrintWindow = () => {
     const pw = window.open("", "_blank");
@@ -1098,7 +1050,6 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             {editId && (
               <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
             )}
-            <Button variant="outline" onClick={downloadPdf} disabled={pdfLoading} className="gap-2">{pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} {pdfLoading ? "Generating..." : "PDF"}</Button>
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
             {/* User Info & Logout */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
