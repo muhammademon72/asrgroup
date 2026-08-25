@@ -732,28 +732,31 @@ export default function EquipmentRequisitionSystem() {
   };
 
   const downloadPdf = async () => {
-    const container = document.createElement('div');
-    container.innerHTML = generatePrintHTML(currentRequisition);
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.width = '210mm';
-    document.body.appendChild(container);
     try {
       const html2pdf = (await import('html2pdf.js')).default;
-      await html2pdf().set({
+      const html = generatePrintHTML(currentRequisition);
+      const filename = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
+
+      const worker = html2pdf();
+      const blob = await worker.set({
         margin: 0,
-        filename: `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(container).save();
+      }).from(html).outputPdf('blob');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      // Fallback: open in new tab for manual save
       const pw = window.open('', '_blank');
       if (pw) { pw.document.write(generatePrintHTML(currentRequisition)); pw.document.close(); }
-    } finally {
-      document.body.removeChild(container);
     }
   };
 
