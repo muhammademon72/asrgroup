@@ -811,10 +811,10 @@ export default function EquipmentRequisitionSystem() {
   };
 
   const generatePrintHTML = (req: Requisition) => `<!DOCTYPE html>
-<html><head><title>Equipment Requisition Form</title><style>
-*{margin:0;padding:0;box-sizing:border-box}
+<html><head><meta charset="utf-8"><title>Equipment Requisition Form</title><style>
+*{margin:0;padding:0;box-sizing:border-box;color-scheme:light}
 @page{size:A4;margin:10mm}
-body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a1a1a;font-size:12px}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a1a1a;font-size:12px;color-scheme:light}
 .container{max-width:190mm;margin:0 auto;border:2px solid #333;padding:15px}
 .header{text-align:center;margin-bottom:15px}
 .header h1{font-size:20px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
