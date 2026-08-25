@@ -1,0 +1,1328 @@
+     1→"use client";
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef } from "react";
+     4→import { LogOut, UserCircle } from "lucide-react";
+     5→import {
+     6→  Save,
+     7→  Edit3,
+     8→  Trash2,
+     9→  FileDown,
+    10→  Printer,
+    11→  Plus,
+    12→  ArrowLeft,
+    13→  Search,
+    14→  X,
+    15→  Loader2,
+    16→  FileText,
+    17→  Settings2,
+    18→  Pencil,
+    19→  Check,
+    20→  CalendarIcon,
+    21→  Copy,
+    22→  Building2,
+    23→  MapPin,
+    24→  Network,
+    25→} from "lucide-react";
+    26→import { format } from "date-fns";
+    27→import { Button } from "@/components/ui/button";
+    28→import { Input } from "@/components/ui/input";
+    29→import { Textarea } from "@/components/ui/textarea";
+    30→import { Checkbox } from "@/components/ui/checkbox";
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from "@/components/ui/select";
+    38→import {
+    39→  Dialog,
+    40→  DialogContent,
+    41→  DialogDescription,
+    42→  DialogFooter,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→} from "@/components/ui/dialog";
+    46→import {
+    47→  Popover,
+    48→  PopoverContent,
+    49→  PopoverTrigger,
+    50→} from "@/components/ui/popover";
+    51→import { Card, CardContent } from "@/components/ui/card";
+    52→import { Badge } from "@/components/ui/badge";
+    53→import { Separator } from "@/components/ui/separator";
+    54→import { Calendar } from "@/components/ui/calendar";
+    55→import { useToast } from "@/hooks/use-toast";
+    56→import UserManagement from "@/components/user-management";
+    57→import LoginPage from "@/components/login-page";
+    58→
+    59→// Types
+    60→interface RequisitionItem {
+    61→  id?: string;
+    62→  sl: number;
+    63→  equipmentName: string;
+    64→  description: string;
+    65→  qty: number;
+    66→  condition: string;
+    67→  approxPrice: number;
+    68→  selected: boolean;
+    69→}
+    70→
+    71→interface Requisition {
+    72→  id?: string;
+    73→  date: string;
+    74→  organizationName: string;
+    75→  department: string;
+    76→  address: string;
+    77→  applicantName: string;
+    78→  applicantDepartment: string;
+    79→  employeeId: string;
+    80→  branchName: string;
+    81→  applicantAddress: string;
+    82→  contact: string;
+    83→  category: string;
+    84→  reason: string;
+    85→  totalAmount: number;
+    86→  status: string;
+    87→  createdByEmail: string;
+    88→  items: RequisitionItem[];
+    89→  createdAt?: string;
+    90→  updatedAt?: string;
+    91→}
+    92→
+    93→interface DropdownOption {
+    94→  id: string;
+    95→  type: string;
+    96→  value: string;
+    97→}
+    98→
+    99→// Default equipment list
+   100→const DEFAULT_EQUIPMENT_NAMES = [
+   101→  "Processor", "Motherboard", "Ram", "SSD Drive", "Power Supply",
+   102→  "CPU Casing", "Monitor", "Mouse", "Keyboard", "UPS",
+   103→  "Wi-Fi Router", "Toner / Cartridge",
+   104→];
+   105→
+   106→const CATEGORIES = ["Desktop", "Laptop", "Network", "CCTV", "PC-Update", "Others Accessories", "Repairing"];
+   107→const CONDITIONS = ["New", "Used", "Refurbished"];
+   108→
+   109→const emptyItem = (sl: number): RequisitionItem => ({
+   110→  sl, equipmentName: "", description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   111→});
+   112→
+   113→const getDefaultItems = (): RequisitionItem[] => {
+   114→  const items = DEFAULT_EQUIPMENT_NAMES.map((name, i) => ({
+   115→    sl: i + 1, equipmentName: name, description: "", qty: 0, condition: "", approxPrice: 0, selected: false,
+   116→  }));
+   117→  for (let i = 0; i < 3; i++) items.push(emptyItem(DEFAULT_EQUIPMENT_NAMES.length + i + 1));
+   118→  return items;
+   119→};
+   120→
+   121→// Dropdown defaults — will be fetched from DB at runtime
+   122→const dropdownDefaults = { department: "Information Technology", branch: "Head Office", address: "Elephant Road" };
+   123→
+   124→const createEmptyRequisition = (defaults = dropdownDefaults): Requisition => ({
+   125→  date: new Date().toLocaleDateString("en-GB"),
+   126→  organizationName: "ASR GROUP",
+   127→  department: "Information and Technology Department",
+   128→  address: "Head Office : Shahid Janani Jahanara Imam Sharani, Elephant Road Dhaka -1205, Bangladesh",
+   129→  applicantName: "",
+   130→  applicantDepartment: defaults.department,
+   131→  employeeId: "",
+   132→  branchName: defaults.branch,
+   133→  applicantAddress: defaults.address,
+   134→  contact: "",
+   135→  category: "Others Accessories",
+   136→  reason: "",
+   137→  totalAmount: 0,
+   138→  status: "Draft",
+   139→  createdByEmail: "",
+   140→  items: getDefaultItems(),
+   141→});
+   142→
+   143→// ==================== DropdownWithManage Component ====================
+   144→function DropdownWithManage({
+   145→  label,
+   146→  type,
+   147→  value,
+   148→  onChange,
+   149→  disabled,
+   150→  isAdmin,
+   151→}: {
+   152→  label: string;
+   153→  type: "department" | "branch" | "address";
+   154→  value: string;
+   155→  onChange: (val: string) => void;
+   156→  disabled: boolean;
+   157→  isAdmin: boolean;
+   158→}) {
+   159→  const [options, setOptions] = useState<DropdownOption[]>([]);
+   160→  const [manageOpen, setManageOpen] = useState(false);
+   161→  const [newOption, setNewOption] = useState("");
+   162→  const [editingOpt, setEditingOpt] = useState<{ id: string; value: string } | null>(null);
+   163→  const [deleteOptId, setDeleteOptId] = useState<string | null>(null);
+   164→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   165→  const [manageLoading, setManageLoading] = useState(false);
+   166→  const { toast } = useToast();
+   167→
+   168→  const fetchOptions = useCallback(async () => {
+   169→    try {
+   170→      const res = await fetch(`/api/dropdown-options?type=${type}`);
+   171→      if (res.ok) setOptions(await res.json());
+   172→    } catch { /* ignore */ }
+   173→  }, [type]);
+   174→
+   175→  useEffect(() => { fetchOptions(); }, [fetchOptions]);
+   176→
+   177→  const handleAddOption = async () => {
+   178→    if (!newOption.trim()) return;
+   179→    setManageLoading(true);
+   180→    try {
+   181→      const res = await fetch("/api/dropdown-options", {
+   182→        method: "POST",
+   183→        headers: { "Content-Type": "application/json" },
+   184→        body: JSON.stringify({ type, value: newOption.trim() }),
+   185→      });
+   186→      if (res.ok) {
+   187→        toast({ title: "Added", description: `"${newOption.trim()}" added successfully` });
+   188→        setNewOption("");
+   189→        await fetchOptions();
+   190→      } else {
+   191→        const err = await res.json();
+   192→        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+   193→      }
+   194→    } catch {
+   195→      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+   196→    } finally { setManageLoading(false); }
+   197→  };
+   198→
+   199→  const handleUpdateOption = async () => {
+   200→    if (!editingOpt || !editingOpt.value.trim()) return;
+   201→    setManageLoading(true);
+   202→    try {
+   203→      const res = await fetch(`/api/dropdown-options/${editingOpt.id}`, {
+   204→        method: "PUT",
+   205→        headers: { "Content-Type": "application/json" },
+   206→        body: JSON.stringify({ value: editingOpt.value.trim() }),
+   207→      });
+   208→      if (res.ok) {
+   209→        toast({ title: "Updated", description: "Option updated successfully" });
+   210→        setEditingOpt(null);
+   211→        await fetchOptions();
+   212→      } else {
+   213→        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   214→      }
+   215→    } catch {
+   216→      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   217→    } finally { setManageLoading(false); }
+   218→  };
+   219→
+   220→  const handleDeleteOption = async () => {
+   221→    if (!deleteOptId) return;
+   222→    setManageLoading(true);
+   223→    try {
+   224→      const res = await fetch(`/api/dropdown-options/${deleteOptId}`, { method: "DELETE" });
+   225→      if (res.ok) {
+   226→        toast({ title: "Deleted", description: "Option removed successfully" });
+   227→        setDeleteOptId(null);
+   228→        setDeleteDialogOpen(false);
+   229→        await fetchOptions();
+   230→      }
+   231→    } catch {
+   232→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   233→    } finally { setManageLoading(false); }
+   234→  };
+   235→
+   236→  return (
+   237→    <div className="flex items-center gap-1">
+   238→      <Select value={value} onValueChange={onChange} disabled={disabled}>
+   239→        <SelectTrigger className="h-7 text-xs flex-1 min-w-0">
+   240→          <SelectValue placeholder={`Select ${label}...`} />
+   241→        </SelectTrigger>
+   242→        <SelectContent>
+   243→          {/* Show current value as fallback if it doesn't match any DB option */}
+   244→          {value && !options.some(opt => opt.value === value) && (
+   245→            <SelectItem key="__current__" value={value}>{value}</SelectItem>
+   246→          )}
+   247→          {options.map((opt) => (
+   248→            <SelectItem key={opt.id} value={opt.value}>{opt.value}</SelectItem>
+   249→          ))}
+   250→        </SelectContent>
+   251→      </Select>
+   252→      {isAdmin && (
+   253→        <Popover open={manageOpen} onOpenChange={setManageOpen}>
+   254→          <PopoverTrigger asChild>
+   255→            <Button
+   256→              variant="ghost"
+   257→              size="sm"
+   258→              className="h-7 w-7 p-0 shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+   259→              title="Manage options"
+   260→            >
+   261→              <Settings2 className="w-3.5 h-3.5" />
+   262→            </Button>
+   263→          </PopoverTrigger>
+   264→          <PopoverContent className="w-72 p-0" align="end" side="bottom">
+   265→            <div className="p-3 border-b bg-slate-50">
+   266→              <h4 className="text-sm font-semibold text-slate-800">Manage {label}</h4>
+   267→              <p className="text-xs text-slate-500">Add, edit, or remove options</p>
+   268→            </div>
+   269→            <div className="p-3 border-b">
+   270→              <div className="flex items-center gap-2">
+   271→                <Input
+   272→                  placeholder={`New ${label.toLowerCase()}...`}
+   273→                  value={newOption}
+   274→                  onChange={(e) => setNewOption(e.target.value)}
+   275→                  onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+   276→                  className="h-8 text-xs flex-1"
+   277→                />
+   278→                <Button
+   279→                  onClick={handleAddOption}
+   280→                  disabled={manageLoading || !newOption.trim()}
+   281→                  size="sm"
+   282→                  className="h-8 gap-1 bg-slate-800 hover:bg-slate-700 shrink-0"
+   283→                >
+   284→                  {manageLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+   285→                  Add
+   286→                </Button>
+   287→              </div>
+   288→            </div>
+   289→            <div className="max-h-48 overflow-y-auto">
+   290→              {options.length === 0 ? (
+   291→                <div className="p-4 text-center text-xs text-slate-400">No options yet</div>
+   292→              ) : (
+   293→                options.map((opt) => (
+   294→                  <div key={opt.id} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-slate-50 transition-colors">
+   295→                    {editingOpt?.id === opt.id ? (
+   296→                      <>
+   297→                        <Input
+   298→                          value={editingOpt.value}
+   299→                          onChange={(e) => setEditingOpt({ ...editingOpt, value: e.target.value })}
+   300→                          onKeyDown={(e) => e.key === "Enter" && handleUpdateOption()}
+   301→                          className="h-7 text-xs flex-1"
+   302→                          autoFocus
+   303→                        />
+   304→                        <Button size="sm" onClick={handleUpdateOption} disabled={manageLoading} className="h-7 w-7 p-0 bg-emerald-600 hover:bg-emerald-500 shrink-0">
+   305→                          <Check className="w-3 h-3" />
+   306→                        </Button>
+   307→                        <Button size="sm" variant="ghost" onClick={() => setEditingOpt(null)} className="h-7 w-7 p-0 shrink-0">
+   308→                          <X className="w-3 h-3" />
+   309→                        </Button>
+   310→                      </>
+   311→                    ) : (
+   312→                      <>
+   313→                        <span className="flex-1 text-xs text-slate-700 truncate">{opt.value}</span>
+   314→                        <Button variant="ghost" size="sm" onClick={() => setEditingOpt({ id: opt.id, value: opt.value })} className="h-7 w-7 p-0 shrink-0" title="Edit">
+   315→                          <Pencil className="w-3 h-3 text-blue-500" />
+   316→                        </Button>
+   317→                        <Button variant="ghost" size="sm" onClick={() => { setDeleteOptId(opt.id); setDeleteDialogOpen(true); }} className="h-7 w-7 p-0 shrink-0" title="Delete">
+   318→                          <Trash2 className="w-3 h-3 text-red-400" />
+   319→                        </Button>
+   320→                      </>
+   321→                    )}
+   322→                  </div>
+   323→                ))
+   324→              )}
+   325→            </div>
+   326→          </PopoverContent>
+   327→        </Popover>
+   328→      )}
+   329→      {/* Delete Confirmation Dialog */}
+   330→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   331→        <DialogContent>
+   332→          <DialogHeader>
+   333→            <DialogTitle>Delete {label} Option</DialogTitle>
+   334→            <DialogDescription>Are you sure you want to delete this option? This action cannot be undone.</DialogDescription>
+   335→          </DialogHeader>
+   336→          <DialogFooter>
+   337→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+   338→            <Button variant="destructive" onClick={handleDeleteOption} disabled={manageLoading}>
+   339→              {manageLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+   340→            </Button>
+   341→          </DialogFooter>
+   342→        </DialogContent>
+   343→      </Dialog>
+   344→    </div>
+   345→  );
+   346→}
+   347→
+   348→// ==================== DatePickerWithAutoClose Component ====================
+   349→function DatePickerWithAutoClose({
+   350→  value,
+   351→  onChange,
+   352→}: {
+   353→  value: string;
+   354→  onChange: (val: string) => void;
+   355→}) {
+   356→  const [open, setOpen] = useState(false);
+   357→
+   358→  const parseDate = (dateStr: string): Date | undefined => {
+   359→    if (!dateStr) return undefined;
+   360→    const parts = dateStr.split("/");
+   361→    if (parts.length === 3) {
+   362→      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+   363→    }
+   364→    return undefined;
+   365→  };
+   366→
+   367→  return (
+   368→    <Popover open={open} onOpenChange={setOpen}>
+   369→      <PopoverTrigger asChild>
+   370→        <Button
+   371→          variant="outline"
+   372→          className="mt-1 w-full justify-start text-left font-normal h-9"
+   373→        >
+   374→          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+   375→          {value || "Pick a date"}
+   376→        </Button>
+   377→      </PopoverTrigger>
+   378→      <PopoverContent className="w-auto p-0" align="start">
+   379→        <Calendar
+   380→          mode="single"
+   381→          selected={parseDate(value)}
+   382→          onSelect={(date) => {
+   383→            if (date) {
+   384→              onChange(format(date, "dd/MM/yyyy"));
+   385→              setOpen(false);
+   386→            }
+   387→          }}
+   388→          captionLayout="dropdown-buttons"
+   389→          defaultMonth={parseDate(value) || new Date()}
+   390→        />
+   391→      </PopoverContent>
+   392→    </Popover>
+   393→  );
+   394→}
+   395→
+   396→// ==================== Dropdown Management Component ====================
+   397→function DropdownManagement({ type, label, icon }: { type: "department" | "branch" | "address"; label: string; icon: React.ReactNode }) {
+   398→  const [options, setOptions] = useState<DropdownOption[]>([]);
+   399→  const [newValue, setNewValue] = useState("");
+   400→  const [editingId, setEditingId] = useState<string | null>(null);
+   401→  const [editingValue, setEditingValue] = useState("");
+   402→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   403→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   404→  const [loading, setLoading] = useState(false);
+   405→  const { toast } = useToast();
+   406→
+   407→  const fetchOptions = useCallback(async () => {
+   408→    try {
+   409→      const res = await fetch(`/api/dropdown-options?type=${type}`);
+   410→      if (res.ok) setOptions(await res.json());
+   411→    } catch { /* ignore */ }
+   412→  }, [type]);
+   413→
+   414→  useEffect(() => { fetchOptions(); }, [fetchOptions]);
+   415→
+   416→  const handleAdd = async () => {
+   417→    if (!newValue.trim()) return;
+   418→    setLoading(true);
+   419→    try {
+   420→      const res = await fetch("/api/dropdown-options", {
+   421→        method: "POST",
+   422→        headers: { "Content-Type": "application/json" },
+   423→        body: JSON.stringify({ type, value: newValue.trim() }),
+   424→      });
+   425→      if (res.ok) {
+   426→        toast({ title: "Added", description: `"${newValue.trim()}" added successfully` });
+   427→        setNewValue("");
+   428→        await fetchOptions();
+   429→      } else {
+   430→        const err = await res.json();
+   431→        toast({ title: "Error", description: err.error || "Failed to add", variant: "destructive" });
+   432→      }
+   433→    } catch {
+   434→      toast({ title: "Error", description: "Failed to add option", variant: "destructive" });
+   435→    } finally { setLoading(false); }
+   436→  };
+   437→
+   438→  const handleUpdate = async () => {
+   439→    if (!editingId || !editingValue.trim()) return;
+   440→    setLoading(true);
+   441→    try {
+   442→      const res = await fetch(`/api/dropdown-options/${editingId}`, {
+   443→        method: "PUT",
+   444→        headers: { "Content-Type": "application/json" },
+   445→        body: JSON.stringify({ value: editingValue.trim() }),
+   446→      });
+   447→      if (res.ok) {
+   448→        toast({ title: "Updated", description: "Option updated successfully" });
+   449→        setEditingId(null);
+   450→        setEditingValue("");
+   451→        await fetchOptions();
+   452→      } else {
+   453→        toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   454→      }
+   455→    } catch {
+   456→      toast({ title: "Error", description: "Failed to update", variant: "destructive" });
+   457→    } finally { setLoading(false); }
+   458→  };
+   459→
+   460→  const handleDelete = async () => {
+   461→    if (!deleteId) return;
+   462→    setLoading(true);
+   463→    try {
+   464→      const res = await fetch(`/api/dropdown-options/${deleteId}`, { method: "DELETE" });
+   465→      if (res.ok) {
+   466→        toast({ title: "Deleted", description: "Option removed successfully" });
+   467→        setDeleteId(null);
+   468→        setDeleteDialogOpen(false);
+   469→        await fetchOptions();
+   470→      }
+   471→    } catch {
+   472→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   473→    } finally { setLoading(false); }
+   474→  };
+   475→
+   476→  return (
+   477→    <div className="space-y-6">
+   478→      {/* Header */}
+   479→      <div className="flex items-center gap-4">
+   480→        <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-white">
+   481→          {icon}
+   482→        </div>
+   483→        <div>
+   484→          <h2 className="text-xl font-bold text-slate-800">Manage {label}</h2>
+   485→          <p className="text-sm text-slate-500">Create, edit, and delete {label.toLowerCase()} options</p>
+   486→        </div>
+   487→      </div>
+   488→
+   489→      {/* Add New */}
+   490→      <Card className="shadow-sm">
+   491→        <CardContent className="p-4">
+   492→          <div className="flex items-center gap-3">
+   493→            <Input
+   494→              placeholder={`Enter new ${label.toLowerCase()} name...`}
+   495→              value={newValue}
+   496→              onChange={(e) => setNewValue(e.target.value)}
+   497→              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+   498→              className="flex-1 h-9"
+   499→            />
+   500→            <Button onClick={handleAdd} disabled={loading || !newValue.trim()} className="bg-slate-800 hover:bg-slate-700 gap-2 h-9">
+   501→              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
+   502→            </Button>
+   503→          </div>
+   504→        </CardContent>
+   505→      </Card>
+   506→
+   507→      {/* Options List */}
+   508→      <Card className="shadow-sm">
+   509→        <div className="border-b bg-slate-50 px-4 py-3 flex items-center justify-between">
+   510→          <h3 className="text-sm font-semibold text-slate-700">{label} List ({options.length})</h3>
+   511→        </div>
+   512→        {options.length === 0 ? (
+   513→          <CardContent className="py-12 text-center">
+   514→            <Settings2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+   515→            <p className="text-sm text-slate-500">No {label.toLowerCase()} options found. Add one above.</p>
+   516→          </CardContent>
+   517→        ) : (
+   518→          <div className="divide-y">
+   519→            {options.map((opt, idx) => (
+   520→              <div key={opt.id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+   521→                <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-600">{idx + 1}</span>
+   522→                {editingId === opt.id ? (
+   523→                  <div className="flex-1 flex items-center gap-2">
+   524→                    <Input
+   525→                      value={editingValue}
+   526→                      onChange={(e) => setEditingValue(e.target.value)}
+   527→                      onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+   528→                      className="h-8 flex-1"
+   529→                      autoFocus
+   530→                    />
+   531→                    <Button size="sm" onClick={handleUpdate} disabled={loading} className="gap-1 h-8 bg-emerald-600 hover:bg-emerald-500">
+   532→                      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save
+   533→                    </Button>
+   534→                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(null); setEditingValue(""); }} className="h-8">Cancel</Button>
+   535→                  </div>
+   536→                ) : (
+   537→                  <>
+   538→                    <span className="flex-1 text-sm font-medium text-slate-700">{opt.value}</span>
+   539→                    <Button variant="ghost" size="sm" onClick={() => { setEditingId(opt.id); setEditingValue(opt.value); }} className="h-8 w-8 p-0" title="Edit">
+   540→                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+   541→                    </Button>
+   542→                    <Button variant="ghost" size="sm" onClick={() => { setDeleteId(opt.id); setDeleteDialogOpen(true); }} className="h-8 w-8 p-0" title="Delete">
+   543→                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+   544→                    </Button>
+   545→                  </>
+   546→                )}
+   547→              </div>
+   548→            ))}
+   549→          </div>
+   550→        )}
+   551→      </Card>
+   552→
+   553→      {/* Delete Confirmation Dialog */}
+   554→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   555→        <DialogContent>
+   556→          <DialogHeader>
+   557→            <DialogTitle>Delete {label}</DialogTitle>
+   558→            <DialogDescription>Are you sure you want to delete this {label.toLowerCase()} option? This action cannot be undone.</DialogDescription>
+   559→          </DialogHeader>
+   560→          <DialogFooter>
+   561→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+   562→            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+   563→              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete
+   564→            </Button>
+   565→          </DialogFooter>
+   566→        </DialogContent>
+   567→      </Dialog>
+   568→    </div>
+   569→  );
+   570→}
+   571→
+   572→// ==================== Main Component ====================
+   573→interface AuthUser {
+   574→  id: string;
+   575→  name: string;
+   576→  email: string;
+   577→  role: string;
+   578→  department: string;
+   579→  branch: string;
+   580→  employeeId: string;
+   581→  status: string;
+   582→}
+   583→
+   584→export default function EquipmentRequisitionSystem() {
+   585→  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+   586→  const [mainTab, setMainTab] = useState<"requisition" | "users" | "department" | "branch" | "address">("requisition");
+   587→  const [view, setView] = useState<"list" | "form">("list");
+   588→  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+   589→  const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
+   590→  const [isEditing, setIsEditing] = useState(false);
+   591→  const [editId, setEditId] = useState<string | null>(null);
+   592→  const [loading, setLoading] = useState(false);
+   593→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   594→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   595→  const [searchTerm, setSearchTerm] = useState("");
+   596→  const { toast } = useToast();
+   597→  const formRef = useRef<HTMLDivElement>(null);
+   598→
+   599→  // Fetch dropdown defaults from DB on mount so new requisitions use DB values
+   600→  // Only override hardcoded defaults if they no longer exist in the DB options
+   601→  const fetchDropdownDefaults = useCallback(async () => {
+   602→    try {
+   603→      const [deptRes, branchRes, addrRes] = await Promise.all([
+   604→        fetch("/api/dropdown-options?type=department"),
+   605→        fetch("/api/dropdown-options?type=branch"),
+   606→        fetch("/api/dropdown-options?type=address"),
+   607→      ]);
+   608→      if (deptRes.ok) {
+   609→        const depts: DropdownOption[] = await deptRes.json();
+   610→        // Only override if the hardcoded default is no longer in the DB
+   611→        if (depts.length > 0 && !depts.some(d => d.value === dropdownDefaults.department)) {
+   612→          dropdownDefaults.department = depts[0].value;
+   613→        }
+   614→      }
+   615→      if (branchRes.ok) {
+   616→        const branches: DropdownOption[] = await branchRes.json();
+   617→        if (branches.length > 0 && !branches.some(b => b.value === dropdownDefaults.branch)) {
+   618→          dropdownDefaults.branch = branches[0].value;
+   619→        }
+   620→      }
+   621→      if (addrRes.ok) {
+   622→        const addrs: DropdownOption[] = await addrRes.json();
+   623→        if (addrs.length > 0 && !addrs.some(a => a.value === dropdownDefaults.address)) {
+   624→          dropdownDefaults.address = addrs[0].value;
+   625→        }
+   626→      }
+   627→    } catch { /* ignore — hardcoded defaults will be used */ }
+   628→  }, []);
+   629→
+   630→  useEffect(() => { fetchDropdownDefaults(); }, [fetchDropdownDefaults]);
+   631→
+   632→  const fetchRequisitions = useCallback(async () => {
+   633→    try {
+   634→      let url = "/api/requisitions";
+   635→      // If User role, only fetch their own requisitions
+   636→      if (authUser && authUser.role === "User" && authUser.email) {
+   637→        url += `?createdByEmail=${encodeURIComponent(authUser.email)}`;
+   638→      }
+   639→      const res = await fetch(url);
+   640→      if (res.ok) setRequisitions(await res.json());
+   641→    } catch {
+   642→      toast({ title: "Error", description: "Failed to fetch requisitions", variant: "destructive" });
+   643→    }
+   644→  }, [toast, authUser]);
+   645→
+   646→  useEffect(() => { fetchRequisitions(); }, [fetchRequisitions]);
+   647→
+   648→  const calculateTotal = (items: RequisitionItem[]) =>
+   649→    items.filter((i) => i.qty > 0 && i.approxPrice > 0).reduce((sum, i) => sum + i.approxPrice * i.qty, 0);
+   650→
+   651→  const updateItem = (index: number, field: keyof RequisitionItem, value: string | number | boolean) => {
+   652→    const newItems = [...currentRequisition.items];
+   653→    newItems[index] = { ...newItems[index], [field]: value };
+   654→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   655→  };
+   656→
+   657→  const addRow = () => {
+   658→    const newItems = [...currentRequisition.items, emptyItem(currentRequisition.items.length + 1)];
+   659→    setCurrentRequisition({ ...currentRequisition, items: newItems });
+   660→  };
+   661→
+   662→  const removeRow = (index: number) => {
+   663→    const newItems = currentRequisition.items.filter((_, i) => i !== index);
+   664→    newItems.forEach((item, i) => (item.sl = i + 1));
+   665→    setCurrentRequisition({ ...currentRequisition, items: newItems, totalAmount: calculateTotal(newItems) });
+   666→  };
+   667→
+   668→  const handleSave = async () => {
+   669→    if (!currentRequisition.applicantName.trim()) {
+   670→      toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
+   671→      return;
+   672→    }
+   673→    if (!currentRequisition.employeeId.trim()) {
+   674→      toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+   675→      return;
+   676→    }
+   677→    setLoading(true);
+   678→    try {
+   679→      const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
+   680→      const method = editId ? "PUT" : "POST";
+   681→      // Preserve original createdByEmail on edit (don't overwrite with admin's email)
+   682→      // Only set createdByEmail on new requisition creation
+   683→      const bodyData = {
+   684→        ...currentRequisition,
+   685→        createdByEmail: editId
+   686→          ? (currentRequisition.createdByEmail || authUser?.email || "")
+   687→          : (authUser?.email || "")
+   688→      };
+   689→      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData) });
+   690→      if (res.ok) {
+   691→        toast({ title: editId ? "Updated Successfully" : "Saved Successfully", description: `Requisition has been ${editId ? "updated" : "saved"}` });
+   692→        await fetchRequisitions();
+   693→        setView("list"); setIsEditing(false); setEditId(null); setCurrentRequisition(createEmptyRequisition());
+   694→      } else {
+   695→        const err = await res.json();
+   696→        toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+   697→      }
+   698→    } catch {
+   699→      toast({ title: "Error", description: "Failed to save requisition", variant: "destructive" });
+   700→    } finally { setLoading(false); }
+   701→  };
+   702→
+   703→  const handleEdit = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(true); setView("form"); };
+   704→  const handleNew = () => { setCurrentRequisition(createEmptyRequisition(dropdownDefaults)); setEditId(null); setIsEditing(true); setView("form"); };
+   705→  const handleView = (req: Requisition) => { setCurrentRequisition(req); setEditId(req.id!); setIsEditing(false); setView("form"); };
+   706→  const handleCopyToNew = (req: Requisition) => {
+   707→    const copied: Requisition = {
+   708→      ...req,
+   709→      id: undefined,
+   710→      date: new Date().toLocaleDateString("en-GB"),
+   711→      status: "Draft",
+   712→      createdByEmail: authUser?.email || "",
+   713→      items: req.items.map((item, i) => ({ ...item, id: undefined, sl: i + 1 })),
+   714→      createdAt: undefined,
+   715→      updatedAt: undefined,
+   716→    };
+   717→    setCurrentRequisition(copied);
+   718→    setEditId(null);
+   719→    setIsEditing(true);
+   720→    setView("form");
+   721→  };
+   722→
+   723→  const handleDelete = async () => {
+   724→    if (!deleteId) return;
+   725→    setLoading(true);
+   726→    try {
+   727→      const res = await fetch(`/api/requisitions/${deleteId}`, { method: "DELETE" });
+   728→      if (res.ok) { toast({ title: "Deleted", description: "Requisition has been deleted" }); await fetchRequisitions(); }
+   729→    } catch {
+   730→      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+   731→    } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
+   732→  };
+   733→
+   734→  const [pdfLoading, setPdfLoading] = useState(false);
+   735→
+   736→  const downloadPdf = async () => {
+   737→    if (pdfLoading) return;
+   738→    setPdfLoading(true);
+   739→    try {
+   740→      const res = await fetch('/api/pdf', {
+   741→        method: 'POST',
+   742→        headers: { 'Content-Type': 'application/json' },
+   743→        body: JSON.stringify(currentRequisition),
+   744→      });
+   745→      if (!res.ok) throw new Error('PDF generation failed');
+   746→      const blob = await res.blob();
+   747→      const url = URL.createObjectURL(blob);
+   748→      const a = document.createElement('a');
+   749→      a.href = url;
+   750→      a.download = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
+   751→      document.body.appendChild(a);
+   752→      a.click();
+   753→      document.body.removeChild(a);
+   754→      setTimeout(() => URL.revokeObjectURL(url), 1000);
+   755→    } catch (error) {
+   756→      console.error('PDF generation failed:', error);
+   757→    } finally {
+   758→      setPdfLoading(false);
+   759→    }
+   760→  };
+   761→
+   762→  const openPrintWindow = () => {
+   763→    const pw = window.open("", "_blank");
+   764→    if (!pw) return;
+   765→    pw.document.write(generatePrintHTML(currentRequisition));
+   766→    pw.document.close();
+   767→    setTimeout(() => pw.print(), 500);
+   768→  };
+   769→
+   770→  const generatePrintHTML = (req: Requisition) => `<!DOCTYPE html>
+   771→<html><head><title>Equipment Requisition Form</title><style>
+   772→*{margin:0;padding:0;box-sizing:border-box}
+   773→@page{size:A4;margin:10mm}
+   774→body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a1a1a;font-size:12px}
+   775→.container{max-width:190mm;margin:0 auto;border:2px solid #333;padding:15px}
+   776→.header{text-align:center;margin-bottom:15px}
+   777→.header h1{font-size:20px;font-weight:800;letter-spacing:2px;margin-bottom:4px}
+   778→.header h2{font-size:13px;font-weight:600;color:#444}
+   779→.top-section{display:flex;gap:15px;margin-bottom:15px}
+   780→.left-col{flex:1}.right-col{flex:1}
+   781→.field{margin-bottom:6px}
+   782→.field-label{font-weight:600;font-size:11px;color:#555}
+   783→.field-value{font-size:12px}
+   784→.applicant-table{width:100%;border-collapse:collapse}
+   785→.applicant-table td{border:1px solid #999;padding:5px 8px;font-size:11px}
+   786→.applicant-table td:first-child{font-weight:600;background:#f5f5f5;width:40%}
+   787→.category-bar{display:flex;gap:12px;padding:8px;border:1px solid #ccc;margin-bottom:15px;flex-wrap:wrap;background:#fafafa}
+   788→.category-item{display:flex;align-items:center;gap:4px;font-size:11px}
+   789→.category-item input[type="checkbox"]{transform:scale(0.85)}
+   790→.equipment-table{width:100%;border-collapse:collapse;margin-bottom:15px}
+   791→.equipment-table th{border:1px solid #333;padding:6px;background:#e8e8e8;font-size:11px;font-weight:700;text-align:center}
+   792→.equipment-table td{border:1px solid #999;padding:5px 6px;font-size:11px}
+   793→.equipment-table tr:nth-child(even){background:#fafafa}
+   794→.total-row{background:#e0e7ff!important;font-weight:700}
+   795→.reason-section{margin-bottom:20px}
+   796→.reason-section h3{font-size:12px;font-weight:700;margin-bottom:4px}
+   797→.reason-text{border:1px solid #ccc;padding:8px;min-height:40px;background:#fafafa;font-size:11px}
+   798→.signature-section{display:flex;justify-content:space-between;margin-top:20px}
+   799→.signature-block{text-align:center;flex:1}
+   800→.signature-line{border-top:1px dashed #666;margin:30px 15px 6px 15px}
+   801→.signature-label{font-size:11px;font-weight:600}
+   802→@media print{body{padding:0}.container{border:none;padding:10px}}
+   803→</style></head><body>
+   804→<div class="container">
+   805→<div class="header"><h1>EQUIPMENT REQUISITION FORM</h1><h2>${req.department}</h2></div>
+   806→<div class="top-section">
+   807→<div class="left-col">
+   808→<div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
+   809→<div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+   810→<div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
+   811→<div class="field"><span class="field-value">${req.department}</span></div>
+   812→<div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
+   813→</div>
+   814→<div class="right-col">
+   815→<table class="applicant-table">
+   816→<tr><td>Applicant Name</td><td>${req.applicantName}</td></tr>
+   817→<tr><td>Applicant Department</td><td>${req.applicantDepartment}</td></tr>
+   818→<tr><td>Employee ID</td><td>${req.employeeId}</td></tr>
+   819→<tr><td>Branch Name</td><td>${req.branchName}</td></tr>
+   820→<tr><td>Address</td><td>${req.applicantAddress}</td></tr>
+   821→<tr><td>Contact</td><td>${req.contact}</td></tr>
+   822→</table></div></div>
+   823→<div class="category-bar">
+   824→${CATEGORIES.map((cat) => `<div class="category-item"${req.category === cat ? ' style="font-weight:bold"' : ''}><input type="checkbox" ${req.category === cat ? "checked" : ""} disabled /> ${cat}</div>`).join("")}
+   825→</div>
+   826→<table class="equipment-table"><thead><tr>
+   827→<th style="width:40px">SL</th><th style="width:50px">Select</th><th>EQUIPMENT NAME</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">CONDITION</th><th style="width:100px">APPROX PRICE</th>
+   828→</tr></thead><tbody>
+   829→${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''}>
+   830→<td style="text-align:center">${item.sl}</td>
+   831→<td style="text-align:center">${item.selected ? "✓" : ""}</td>
+   832→<td>${item.equipmentName}</td><td>${item.description}</td>
+   833→<td style="text-align:center">${item.qty || "-"}</td>
+   834→<td style="text-align:center">${item.condition || "-"}</td>
+   835→<td style="text-align:right">${item.approxPrice ? "৳" + item.approxPrice.toLocaleString() : "-"}</td>
+   836→</tr>`).join("")}
+   837→<tr class="total-row"><td colspan="6" style="text-align:right;padding-right:15px">Total Amount:</td><td style="text-align:right">৳${req.totalAmount.toLocaleString()}</td></tr>
+   838→</tbody></table>
+   839→<div class="reason-section"><h3>PLEASE WRITE A REASON :</h3><div class="reason-text">${req.reason || "-"}</div></div>
+   840→<div class="signature-section">
+   841→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Applicant</div></div>
+   842→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Manager / In-Charge</div></div>
+   843→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Recommend by</div></div>
+   844→<div class="signature-block"><div class="signature-line"></div><div class="signature-label">Authority</div></div>
+   845→</div></div></body></html>`;
+   846→
+   847→  const getStatusBadge = (status: string) => {
+   848→    const colors: Record<string, string> = {
+   849→      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
+   850→      Read: "bg-indigo-100 text-indigo-800 border-indigo-300",
+   851→      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
+   852→      Approved: "bg-green-100 text-green-800 border-green-300",
+   853→      Rejected: "bg-red-100 text-red-800 border-red-300",
+   854→    };
+   855→    return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
+   856→  };
+   857→
+   858→  const filteredRequisitions = requisitions.filter((r) =>
+   859→    r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   860→    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   861→    r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   862→    r.id?.toLowerCase().includes(searchTerm.toLowerCase())
+   863→  );
+   864→
+   865→  // ===================== LOGIN GUARD =====================
+   866→  if (!authUser) {
+   867→    return <LoginPage onLogin={(user) => setAuthUser(user as AuthUser)} />;
+   868→  }
+   869→
+   870→  // ===================== LIST VIEW =====================
+   871→  if (view === "list") {
+   872→    return (
+   873→      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+   874→        <div className="bg-white border-b shadow-sm">
+   875→          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+   876→            <div className="flex items-center gap-3">
+   877→              <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
+   878→                <FileText className="w-5 h-5 text-white" />
+   879→              </div>
+   880→              <div>
+   881→                <h1 className="text-xl font-bold text-slate-800">Equipment Requisition System</h1>
+   882→                <p className="text-xs text-slate-500">Information and Technology Department</p>
+   883→              </div>
+   884→            </div>
+   885→            {/* Tab Navigation */}
+   886→            <div className="flex items-center gap-2">
+   887→              <div className="flex bg-slate-100 rounded-lg p-1 mr-3">
+   888→                <button
+   889→                  onClick={() => setMainTab("requisition")}
+   890→                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "requisition" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   891→                >
+   892→                  Requisition
+   893→                </button>
+   894→                {authUser.role === "Admin" && (
+   895→                  <>
+   896→                    <button
+   897→                      onClick={() => setMainTab("department")}
+   898→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "department" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   899→                    >
+   900→                      <Network className="w-3.5 h-3.5" /> Department
+   901→                    </button>
+   902→                    <button
+   903→                      onClick={() => setMainTab("branch")}
+   904→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "branch" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   905→                    >
+   906→                      <Building2 className="w-3.5 h-3.5" /> Branch
+   907→                    </button>
+   908→                    <button
+   909→                      onClick={() => setMainTab("address")}
+   910→                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "address" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   911→                    >
+   912→                      <MapPin className="w-3.5 h-3.5" /> Address
+   913→                    </button>
+   914→                  </>
+   915→                )}
+   916→                {authUser.role === "Admin" && (
+   917→                  <button
+   918→                    onClick={() => setMainTab("users")}
+   919→                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${mainTab === "users" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+   920→                  >
+   921→                    Admin Panel
+   922→                  </button>
+   923→                )}
+   924→              </div>
+   925→              {mainTab === "requisition" && (
+   926→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+   927→                  <Plus className="w-4 h-4" /> New Requisition
+   928→                </Button>
+   929→              )}
+   930→              {/* User Info & Logout */}
+   931→              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+   932→                <div className="flex items-center gap-2">
+   933→                  <UserCircle className="w-5 h-5 text-slate-500" />
+   934→                  <div className="hidden sm:block">
+   935→                    <p className="text-xs font-medium text-slate-700">{authUser.name}</p>
+   936→                    <p className="text-[10px] text-slate-400">{authUser.role}</p>
+   937→                  </div>
+   938→                </div>
+   939→                <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600">
+   940→                  <LogOut className="w-4 h-4" />
+   941→                </Button>
+   942→              </div>
+   943→            </div>
+   944→          </div>
+   945→        </div>
+   946→        <div className="max-w-7xl mx-auto px-4 py-6">
+   947→          {mainTab === "users" ? (
+   948→            <UserManagement />
+   949→          ) : mainTab === "department" ? (
+   950→            <DropdownManagement type="department" label="Department" icon={<Network className="w-5 h-5" />} />
+   951→          ) : mainTab === "branch" ? (
+   952→            <DropdownManagement type="branch" label="Branch" icon={<Building2 className="w-5 h-5" />} />
+   953→          ) : mainTab === "address" ? (
+   954→            <DropdownManagement type="address" label="Address" icon={<MapPin className="w-5 h-5" />} />
+   955→          ) : (
+   956→          <>
+   957→          <div className="flex items-center gap-3 mb-4">
+   958→            <div className="relative flex-1 max-w-md">
+   959→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   960→              <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+   961→            </div>
+   962→            <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+   963→          </div>
+   964→          {filteredRequisitions.length === 0 ? (
+   965→            <Card className="text-center py-16">
+   966→              <CardContent>
+   967→                <FileText className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+   968→                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Requisitions Found</h3>
+   969→                <p className="text-sm text-slate-400 mb-4">Create your first equipment requisition form</p>
+   970→                <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2"><Plus className="w-4 h-4" /> New Requisition</Button>
+   971→              </CardContent>
+   972→            </Card>
+   973→          ) : (
+   974→            <Card>
+   975→              <div className="overflow-x-auto">
+   976→                <table className="w-full">
+   977→                  <thead>
+   978→                    <tr className="border-b bg-slate-50">
+   979→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
+   980→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+   981→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
+   982→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
+   983→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
+   984→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
+   985→                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
+   986→                      <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
+   987→                    </tr>
+   988→                  </thead>
+   989→                  <tbody>
+   990→                    {filteredRequisitions.map((req, idx) => (
+   991→                      <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
+   992→                        <td className="p-3 text-sm">{idx + 1}</td>
+   993→                        <td className="p-3 text-sm">{req.date}</td>
+   994→                        <td className="p-3 text-sm font-medium">{req.applicantName}</td>
+   995→                        <td className="p-3 text-sm font-mono">{req.employeeId}</td>
+   996→                        <td className="p-3 text-sm">{req.category}</td>
+   997→                        <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
+   998→                        <td className="p-3">
+   999→                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+  1000→                        </td>
+  1001→                        <td className="p-3">
+  1002→                          <div className="flex items-center justify-center gap-1">
+  1003→                            <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
+  1004→                            {(authUser.role === "Admin" || req.status === "Draft") && (
+  1005→                              <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
+  1006→                            )}
+  1007→                            <Button variant="ghost" size="sm" onClick={() => handleCopyToNew(req)} title="Copy to New Requisition" className="h-8 w-8 p-0"><Copy className="w-4 h-4 text-emerald-600" /></Button>
+  1008→                            {authUser.role === "Admin" && (
+  1009→                              <Button variant="ghost" size="sm" onClick={() => { setDeleteId(req.id!); setDeleteDialogOpen(true); }} title="Delete" className="h-8 w-8 p-0"><Trash2 className="w-4 h-4 text-red-500" /></Button>
+  1010→                            )}
+  1011→                          </div>
+  1012→                        </td>
+  1013→                      </tr>
+  1014→                    ))}
+  1015→                  </tbody>
+  1016→                </table>
+  1017→              </div>
+  1018→            </Card>
+  1019→          )}
+  1020→          </>
+  1021→          )}
+  1022→        </div>
+  1023→        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  1024→          <DialogContent>
+  1025→            <DialogHeader><DialogTitle>Delete Requisition</DialogTitle><DialogDescription>Are you sure you want to delete this requisition? This action cannot be undone.</DialogDescription></DialogHeader>
+  1026→            <DialogFooter>
+  1027→              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+  1028→              <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete</Button>
+  1029→            </DialogFooter>
+  1030→          </DialogContent>
+  1031→        </Dialog>
+  1032→      </div>
+  1033→    );
+  1034→  }
+  1035→
+  1036→  // ===================== FORM VIEW =====================
+  1037→  return (
+  1038→    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+  1039→      <div className="bg-white border-b shadow-sm">
+  1040→        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+  1041→          <div className="flex items-center gap-3">
+  1042→            <Button variant="ghost" size="sm" onClick={() => { setView("list"); setIsEditing(false); setEditId(null); }} className="gap-1"><ArrowLeft className="w-4 h-4" /> Back</Button>
+  1043→            <Separator orientation="vertical" className="h-6" />
+  1044→            <h2 className="text-sm font-semibold text-slate-700">{isEditing ? (editId ? "Edit Requisition" : "New Requisition") : "View Requisition"}</h2>
+  1045→          </div>
+  1046→          <div className="flex items-center gap-2">
+  1047→            {isEditing && (
+  1048→              <Button onClick={handleSave} disabled={loading} className="bg-slate-800 hover:bg-slate-700 gap-2">
+  1049→                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+  1050→              </Button>
+  1051→            )}
+  1052→            {!isEditing && editId && (authUser.role === "Admin" || currentRequisition.status === "Draft") && (
+  1053→              <Button onClick={() => setIsEditing(true)} className="gap-2 bg-blue-600 hover:bg-blue-500"><Edit3 className="w-4 h-4" /> Edit</Button>
+  1054→            )}
+  1055→            {editId && (
+  1056→              <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
+  1057→            )}
+  1058→            <Button variant="outline" onClick={downloadPdf} disabled={pdfLoading} className="gap-2">{pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} {pdfLoading ? "Generating..." : "PDF"}</Button>
+  1059→            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+  1060→            {/* User Info & Logout */}
+  1061→            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
+  1062→              <UserCircle className="w-4 h-4 text-slate-500" />
+  1063→              <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+  1064→              <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600 h-7 w-7 p-0">
+  1065→                <LogOut className="w-3.5 h-3.5" />
+  1066→              </Button>
+  1067→            </div>
+  1068→          </div>
+  1069→        </div>
+  1070→      </div>
+  1071→
+  1072→      <div className="max-w-5xl mx-auto px-4 py-6" ref={formRef}>
+  1073→        <Card className="shadow-md border-slate-300">
+  1074→          <CardContent className="p-6">
+  1075→            {/* Title */}
+  1076→            <div className="text-center mb-6">
+  1077→              <h1 className="text-2xl font-extrabold tracking-widest text-slate-800">EQUIPMENT REQUISITION FORM</h1>
+  1078→              <p className="text-sm font-semibold text-slate-500 mt-1">{currentRequisition.department}</p>
+  1079→            </div>
+  1080→
+  1081→            {/* Top Section */}
+  1082→            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  1083→              {/* Left Column */}
+  1084→              <div className="space-y-3">
+  1085→                <div>
+  1086→                  <label className="text-xs font-semibold text-slate-500 uppercase">Date</label>
+  1087→                  {isEditing ? (
+  1088→                    <DatePickerWithAutoClose
+  1089→                      value={currentRequisition.date}
+  1090→                      onChange={(val) => setCurrentRequisition({ ...currentRequisition, date: val })}
+  1091→                    />
+  1092→                  ) : (
+  1093→                    <p className="text-sm mt-1 font-medium">{currentRequisition.date}</p>
+  1094→                  )}
+  1095→                </div>
+  1096→                <div className="pt-2"><p className="text-xs font-semibold text-slate-500">To,</p></div>
+  1097→                <div>
+  1098→                  <label className="text-xs font-semibold text-slate-500 uppercase">Organization Name</label>
+  1099→                  {isEditing && authUser?.role !== "User" ? (
+  1100→                    <Input value={currentRequisition.organizationName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, organizationName: e.target.value })} className="mt-1" />
+  1101→                  ) : (
+  1102→                    <p className="text-sm mt-1 font-bold">{currentRequisition.organizationName}</p>
+  1103→                  )}
+  1104→                </div>
+  1105→                <div>
+  1106→                  <label className="text-xs font-semibold text-slate-500 uppercase">Department</label>
+  1107→                  {isEditing && authUser?.role !== "User" ? (
+  1108→                    <Input value={currentRequisition.department} onChange={(e) => setCurrentRequisition({ ...currentRequisition, department: e.target.value })} className="mt-1" />
+  1109→                  ) : (
+  1110→                    <p className="text-sm mt-1">{currentRequisition.department}</p>
+  1111→                  )}
+  1112→                </div>
+  1113→                <div>
+  1114→                  <label className="text-xs font-semibold text-slate-500 uppercase">Address</label>
+  1115→                  {isEditing && authUser?.role !== "User" ? (
+  1116→                    <Textarea value={currentRequisition.address} onChange={(e) => setCurrentRequisition({ ...currentRequisition, address: e.target.value })} className="mt-1" rows={2} />
+  1117→                  ) : (
+  1118→                    <p className="text-xs mt-1 text-slate-600">{currentRequisition.address}</p>
+  1119→                  )}
+  1120→                </div>
+  1121→              </div>
+  1122→
+  1123→              {/* Right Column - Applicant Table */}
+  1124→              <div className="border border-slate-300 rounded-md overflow-hidden">
+  1125→                <table className="w-full text-sm">
+  1126→                  <tbody>
+  1127→                    <tr className="border-b border-slate-200">
+  1128→                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+  1129→                      <td className="p-2">
+  1130→                        {isEditing ? (
+  1131→                          <Input value={currentRequisition.applicantName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })} className="h-7 text-sm" />
+  1132→                        ) : (
+  1133→                          <span>{currentRequisition.applicantName}</span>
+  1134→                        )}
+  1135→                      </td>
+  1136→                    </tr>
+  1137→                    {/* Applicant Department - DROPDOWN */}
+  1138→                    <tr className="border-b border-slate-200">
+  1139→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+  1140→                      <td className="p-2">
+  1141→                        {isEditing ? (
+  1142→                          <DropdownWithManage
+  1143→                            label="Department"
+  1144→                            type="department"
+  1145→                            value={currentRequisition.applicantDepartment}
+  1146→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantDepartment: val })}
+  1147→                            disabled={!isEditing}
+  1148→                            isAdmin={false}
+  1149→                          />
+  1150→                        ) : (
+  1151→                          <span>{currentRequisition.applicantDepartment}</span>
+  1152→                        )}
+  1153→                      </td>
+  1154→                    </tr>
+  1155→                    <tr className="border-b border-slate-200">
+  1156→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+  1157→                      <td className="p-2">
+  1158→                        {isEditing ? (
+  1159→                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })} className="h-7 text-sm font-mono" />
+  1160→                        ) : (
+  1161→                          <span className="font-mono">{currentRequisition.employeeId}</span>
+  1162→                        )}
+  1163→                      </td>
+  1164→                    </tr>
+  1165→                    {/* Branch Name - DROPDOWN */}
+  1166→                    <tr className="border-b border-slate-200">
+  1167→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+  1168→                      <td className="p-2">
+  1169→                        {isEditing ? (
+  1170→                          <DropdownWithManage
+  1171→                            label="Branch"
+  1172→                            type="branch"
+  1173→                            value={currentRequisition.branchName}
+  1174→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, branchName: val })}
+  1175→                            disabled={!isEditing}
+  1176→                            isAdmin={false}
+  1177→                          />
+  1178→                        ) : (
+  1179→                          <span>{currentRequisition.branchName}</span>
+  1180→                        )}
+  1181→                      </td>
+  1182→                    </tr>
+  1183→                    {/* Address - DROPDOWN */}
+  1184→                    <tr className="border-b border-slate-200">
+  1185→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+  1186→                      <td className="p-2">
+  1187→                        {isEditing ? (
+  1188→                          <DropdownWithManage
+  1189→                            label="Address"
+  1190→                            type="address"
+  1191→                            value={currentRequisition.applicantAddress}
+  1192→                            onChange={(val) => setCurrentRequisition({ ...currentRequisition, applicantAddress: val })}
+  1193→                            disabled={!isEditing}
+  1194→                            isAdmin={false}
+  1195→                          />
+  1196→                        ) : (
+  1197→                          <span>{currentRequisition.applicantAddress}</span>
+  1198→                        )}
+  1199→                      </td>
+  1200→                    </tr>
+  1201→                    <tr>
+  1202→                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+  1203→                      <td className="p-2">
+  1204→                        {isEditing ? (
+  1205→                          <Input value={currentRequisition.contact} onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })} className="h-7 text-sm" />
+  1206→                        ) : (
+  1207→                          <span>{currentRequisition.contact}</span>
+  1208→                        )}
+  1209→                      </td>
+  1210→                    </tr>
+  1211→                  </tbody>
+  1212→                </table>
+  1213→              </div>
+  1214→            </div>
+  1215→
+  1216→            {/* Category Selection Bar */}
+  1217→            <div className="border border-slate-300 rounded-md p-3 mb-6 bg-slate-50">
+  1218→              <div className="flex flex-wrap gap-4 items-center">
+  1219→                {CATEGORIES.map((cat) => (
+  1220→                  <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+  1221→                    <Checkbox checked={currentRequisition.category === cat} onCheckedChange={() => isEditing && setCurrentRequisition({ ...currentRequisition, category: cat })} disabled={!isEditing} />
+  1222→                    <span className={currentRequisition.category === cat ? "font-bold text-slate-800" : "text-slate-500"}>{cat}</span>
+  1223→                  </label>
+  1224→                ))}
+  1225→              </div>
+  1226→            </div>
+  1227→
+  1228→            {/* Equipment Table */}
+  1229→            <div className="border border-slate-400 rounded-md overflow-hidden mb-6">
+  1230→              <table className="w-full text-sm">
+  1231→                <thead>
+  1232→                  <tr className="bg-slate-200 border-b border-slate-400">
+  1233→                    <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
+  1234→                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+  1235→                    <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
+  1236→                    <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
+  1237→                    <th className="p-2 text-center font-bold text-xs w-[80px]">QTY</th>
+  1238→                    <th className="p-2 text-center font-bold text-xs w-[100px]">CONDITION</th>
+  1239→                    <th className="p-2 text-right font-bold text-xs w-[110px]">APPROX PRICE</th>
+  1240→                    {isEditing && <th className="p-2 text-center font-bold text-xs w-[40px]"></th>}
+  1241→                  </tr>
+  1242→                </thead>
+  1243→                <tbody>
+  1244→                  {currentRequisition.items.map((item, index) => (
+  1245→                    <tr key={index} className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50"} ${item.selected ? "font-bold bg-blue-50" : ""}`}>
+  1246→                      <td className="p-2 text-center text-xs font-medium">{item.sl}</td>
+  1247→                      <td className="p-2 text-center"><Checkbox checked={item.selected} onCheckedChange={(checked) => updateItem(index, "selected", !!checked)} /></td>
+  1248→                      <td className="p-2">{isEditing ? <Input value={item.equipmentName} onChange={(e) => updateItem(index, "equipmentName", e.target.value)} className="h-7 text-xs" /> : <span className="text-xs">{item.equipmentName || "-"}</span>}</td>
+  1249→                      <td className="p-2">{isEditing ? <Input value={item.description} onChange={(e) => updateItem(index, "description", e.target.value)} className="h-7 text-xs" placeholder="—" /> : <span className="text-xs">{item.description || "—"}</span>}</td>
+  1250→                      <td className="p-2">{isEditing ? <Input type="number" value={item.qty || ""} onChange={(e) => updateItem(index, "qty", parseInt(e.target.value) || 0)} className="h-8 text-sm text-center w-[72px]" min={0} /> : <span className="text-sm text-center block">{item.qty || "—"}</span>}</td>
+  1251→                      <td className="p-2">
+  1252→                        {isEditing ? (
+  1253→                          <Select value={item.condition} onValueChange={(val) => updateItem(index, "condition", val)}>
+  1254→                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+  1255→                            <SelectContent>{CONDITIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+  1256→                          </Select>
+  1257→                        ) : (
+  1258→                          <span className="text-xs block text-center">{item.condition || "—"}</span>
+  1259→                        )}
+  1260→                      </td>
+  1261→                      <td className="p-2">{isEditing ? (authUser?.role === "Admin" ? <Input type="number" value={item.approxPrice || ""} onChange={(e) => updateItem(index, "approxPrice", parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right" min={0} /> : <span className="text-xs block text-right text-slate-400">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>) : <span className="text-xs block text-right">{item.approxPrice ? `৳${item.approxPrice.toLocaleString()}` : "—"}</span>}</td>
+  1262→                      {isEditing && (
+  1263→                        <td className="p-1 text-center"><Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="h-6 w-6 p-0 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></Button></td>
+  1264→                      )}
+  1265→                    </tr>
+  1266→                  ))}
+  1267→                  <tr className="bg-indigo-100 border-t-2 border-slate-400">
+  1268→                    <td colSpan={isEditing ? 6 : 5} className="p-2 text-right font-bold text-sm pr-4">Total Amount:</td>
+  1269→                    <td className="p-2 text-right font-bold text-sm">৳{currentRequisition.totalAmount.toLocaleString()}</td>
+  1270→                    {isEditing && <td></td>}
+  1271→                  </tr>
+  1272→                </tbody>
+  1273→              </table>
+  1274→            </div>
+  1275→
+  1276→            {isEditing && (
+  1277→              <div className="mb-6"><Button variant="outline" size="sm" onClick={addRow} className="gap-1 text-xs"><Plus className="w-3 h-3" /> Add Row</Button></div>
+  1278→            )}
+  1279→
+  1280→            {/* Reason */}
+  1281→            <div className="mb-8">
+  1282→              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+  1283→              {isEditing ? (
+  1284→                <Textarea value={currentRequisition.reason} onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })} className="min-h-[80px]" placeholder="Write your reason here..." />
+  1285→              ) : (
+  1286→                <div className="border border-slate-300 rounded-md p-3 bg-slate-50 min-h-[60px] text-sm">{currentRequisition.reason || "—"}</div>
+  1287→              )}
+  1288→            </div>
+  1289→
+  1290→            {/* Status */}
+  1291→            {editId && (
+  1292→              <div className="mb-8">
+  1293→                <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
+  1294→                {isEditing && (authUser?.role === "Admin" || authUser?.role === "User") ? (
+  1295→                  <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
+  1296→                    <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
+  1297→                    <SelectContent>
+  1298→                      <SelectItem value="Draft">Draft</SelectItem>
+  1299→                      <SelectItem value="Submitted">Submitted</SelectItem>
+  1300→                      {authUser?.role === "Admin" && (
+  1301→                        <>
+  1302→                          <SelectItem value="Approved">Approved</SelectItem>
+  1303→                          <SelectItem value="Rejected">Rejected</SelectItem>
+  1304→                        </>
+  1305→                      )}
+  1306→                    </SelectContent>
+  1307→                  </Select>
+  1308→                ) : (
+  1309→                  <div className="mt-1"><span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(currentRequisition.status)}`}>{currentRequisition.status}</span></div>
+  1310→                )}
+  1311→              </div>
+  1312→            )}
+  1313→
+  1314→            {/* Signatures */}
+  1315→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+  1316→              {["Applicant", "Manager / In-Charge", "Recommend by", "Authority"].map((role) => (
+  1317→                <div key={role} className="text-center">
+  1318→                  <div className="border-t-2 border-dashed border-slate-400 mt-16 pt-2"><p className="text-xs font-semibold text-slate-600">{role}</p></div>
+  1319→                </div>
+  1320→              ))}
+  1321→            </div>
+  1322→          </CardContent>
+  1323→        </Card>
+  1324→      </div>
+  1325→    </div>
+  1326→  );
+  1327→}
+  1328→

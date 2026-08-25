@@ -742,18 +742,28 @@ export default function EquipmentRequisitionSystem() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentRequisition),
       });
-      if (!res.ok) throw new Error('PDF generation failed');
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || `Server error ${res.status}`);
+      }
       const blob = await res.blob();
+      if (blob.size < 100) throw new Error('PDF file is empty or corrupted');
+      const filename = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || 'requisition'}.pdf`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
+      a.download = filename;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 500);
+      toast({ title: 'PDF Downloaded', description: filename });
+    } catch (error: any) {
       console.error('PDF generation failed:', error);
+      toast({ title: 'PDF Failed', description: error.message || 'Could not generate PDF. Please try again.', variant: 'destructive' });
     } finally {
       setPdfLoading(false);
     }
