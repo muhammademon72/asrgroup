@@ -736,178 +736,39 @@ export default function EquipmentRequisitionSystem() {
   const downloadPdf = async () => {
     if (pdfLoading) return;
     setPdfLoading(true);
-    // Use setTimeout to let the UI update (show spinner) before heavy work
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 80));
     try {
       const { jsPDF } = await import('jspdf');
-      const { default: autoTable } = await import('jspdf-autotable');
+      const html = generatePrintHTML(currentRequisition);
 
-      const req = currentRequisition;
+      // Create hidden iframe to render the HTML
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
+      document.body.appendChild(iframe);
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      iframeDoc?.open();
+      iframeDoc?.write(html);
+      iframeDoc?.close();
+      await new Promise(r => setTimeout(r, 400));
+
+      const body = iframeDoc?.body;
+      if (!body) throw new Error('PDF render failed');
+
       const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 10;
-      const contentWidth = pageWidth - margin * 2;
-      let y = margin;
 
-      // Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(18);
-      doc.text('EQUIPMENT REQUISITION FORM', pageWidth / 2, y + 5, { align: 'center' });
-      y += 10;
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(req.department || '', pageWidth / 2, y, { align: 'center' });
-      y += 8;
-
-      // Left column
-      doc.setFontSize(9);
-      const leftX = margin;
-      const rightX = pageWidth / 2 + 5;
-      const colWidth = pageWidth / 2 - margin - 5;
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date:', leftX, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(String(req.date || ''), leftX + 15, y);
-      y += 6;
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('To,', leftX, y);
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.text(req.organizationName || '', leftX, y);
-      y += 4;
-      doc.setFont('helvetica', 'normal');
-      doc.text(req.department || '', leftX, y);
-      y += 4;
-      doc.setFontSize(8);
-      doc.text(req.address || '', leftX, y);
-      doc.setFontSize(9);
-      y += 4;
-
-      // Right column - Applicant info
-      const applicantInfo = [
-        ['Applicant Name', req.applicantName || ''],
-        ['Applicant Department', req.applicantDepartment || ''],
-        ['Employee ID', req.employeeId || ''],
-        ['Branch Name', req.branchName || ''],
-        ['Address', req.applicantAddress || ''],
-        ['Contact', req.contact || ''],
-      ];
-
-      const startYRight = y - 24;
-      applicantInfo.forEach((row, i) => {
-        const ry = startYRight + (i * 5);
-        doc.setFont('helvetica', 'bold');
-        doc.text(row[0], rightX, ry);
-        doc.setFont('helvetica', 'normal');
-        doc.text(row[1], rightX + colWidth - 10, ry, { align: 'right' });
+      await doc.html(body, {
+        x: 0,
+        y: 0,
+        width: 210,
+        windowWidth: 794,
+        margin: [10, 10, 10, 10],
+        autoPaging: 'slice',
+        html2canvas: { scale: 2, useCORS: true, logging: false },
       });
 
-      doc.setDrawColor(150);
-      doc.rect(rightX - 1, startYRight - 3, colWidth + 2, 30);
-      doc.setDrawColor(200);
-      for (let i = 1; i < applicantInfo.length; i++) {
-        const ry = startYRight + (i * 5) - 3.5;
-        doc.line(rightX - 1, ry, rightX + colWidth + 1, ry);
-      }
-      doc.line(rightX + colWidth - 10, startYRight - 3, rightX + colWidth - 10, startYRight + 27);
+      document.body.removeChild(iframe);
 
-      y += 5;
-
-      // Categories
-      const categories = ['Desktop', 'Laptop', 'Network', 'CCTV', 'PC-Update', 'Others Accessories', 'Repairing'];
-      const catBoxHeight = 8;
-      doc.setDrawColor(180);
-      doc.rect(margin, y, contentWidth, catBoxHeight);
-      let catX = margin + 3;
-      const catSpacing = contentWidth / categories.length;
-      categories.forEach((cat) => {
-        const isSelected = req.category === cat;
-        if (isSelected) {
-          doc.setDrawColor(0);
-          doc.rect(catX, y + 2.5, 3, 3);
-          doc.line(catX, y + 4, catX + 1.5, y + 5.5);
-          doc.line(catX + 1.5, y + 5.5, catX + 3, y + 2.5);
-          doc.setFont('helvetica', 'bold');
-        } else {
-          doc.setDrawColor(100);
-          doc.rect(catX, y + 2.5, 3, 3);
-          doc.setFont('helvetica', 'normal');
-        }
-        doc.setFontSize(8);
-        doc.text(cat, catX + 4, y + 5);
-        catX += catSpacing;
-      });
-      y += catBoxHeight + 3;
-
-      // Equipment table
-      const tableBody = (req.items || []).map((item, i: number) => [
-        String(item.sl || i + 1),
-        item.selected ? '✓' : '',
-        item.equipmentName || '',
-        item.description || '',
-        String(item.qty || '—'),
-        item.condition || '—',
-        item.approxPrice ? '৳' + item.approxPrice.toLocaleString() : '—',
-      ]);
-
-      autoTable(doc, {
-        startY: y,
-        head: [['SL', 'Select', 'EQUIPMENT NAME', 'DESCRIPTION', 'QTY', 'CONDITION', 'APPROX PRICE']],
-        body: tableBody,
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 8, cellPadding: 2, lineColor: [150, 150, 150], lineWidth: 0.3 },
-        headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 8 },
-        columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 12, halign: 'center' }, 4: { cellWidth: 12, halign: 'center' }, 5: { cellWidth: 18, halign: 'center' }, 6: { cellWidth: 22, halign: 'right' } },
-        didParseCell: (data: any) => {
-          if (data.section === 'body' && data.row.raw[1] === '✓') {
-            data.cell.styles.fontStyle = 'bold';
-          }
-        },
-      });
-
-      y = (doc as any).lastAutoTable.finalY + 5;
-
-      // Total row
-      doc.setFillColor(224, 231, 255);
-      doc.rect(margin, y, contentWidth, 7, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.text('Total Amount:', pageWidth - margin - 35, y + 5, { align: 'right' });
-      doc.text('৳' + (req.totalAmount || 0).toLocaleString(), pageWidth - margin, y + 5, { align: 'right' });
-      y += 12;
-
-      // Reason section
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('PLEASE WRITE A REASON :', margin, y);
-      y += 3;
-      doc.setDrawColor(180);
-      doc.setFillColor(250, 250, 250);
-      doc.rect(margin, y, contentWidth, 18, 'FD');
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      const reasonLines = doc.splitTextToSize(req.reason || '—', contentWidth - 6);
-      doc.text(reasonLines, margin + 3, y + 5);
-      y += 25;
-
-      // Signatures
-      const sigWidth = contentWidth / 4;
-      const sigLabels = ['Applicant', 'Manager / In-Charge', 'Recommend by', 'Authority'];
-      sigLabels.forEach((label, i) => {
-        const sx = margin + sigWidth * i;
-        doc.setDrawColor(100);
-        doc.setLineDashPattern([2, 2], 0);
-        doc.line(sx + 5, y + 15, sx + sigWidth - 5, y + 15);
-        doc.setLineDashPattern([], 0);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text(label, sx + sigWidth / 2, y + 19, { align: 'center' });
-      });
-
-      // Auto download
-      const filename = `Requisition_${req.id || 'draft'}_${(req.applicantName || 'requisition').replace(/\s+/g, '_')}.pdf`;
+      const filename = `Requisition_${currentRequisition.id || 'draft'}_${(currentRequisition.applicantName || 'requisition').replace(/\s+/g, '_')}.pdf`;
       doc.save(filename);
       toast({ title: 'PDF Downloaded', description: filename });
     } catch (error: any) {
