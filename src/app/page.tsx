@@ -12,6 +12,7 @@ import {
   Search,
   X,
   Loader2,
+  KeyRound,
   FileText,
   Settings2,
   Pencil,
@@ -615,6 +616,12 @@ export default function EquipmentRequisitionSystem() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  // Change password
+  const [cpDialogOpen, setCpDialogOpen] = useState(false);
+  const [cpCurrent, setCpCurrent] = useState("");
+  const [cpNew, setCpNew] = useState("");
+  const [cpConfirm, setCpConfirm] = useState("");
+  const [cpLoading, setCpLoading] = useState(false);
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -753,6 +760,34 @@ export default function EquipmentRequisitionSystem() {
     } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
   };
 
+  const handleChangePassword = async () => {
+    if (!cpCurrent || !cpNew || !cpConfirm) {
+      toast({ title: "Validation", description: "All fields are required", variant: "destructive" });
+      return;
+    }
+    if (cpNew.length < 4) {
+      toast({ title: "Validation", description: "New password must be at least 4 characters", variant: "destructive" });
+      return;
+    }
+    if (cpNew !== cpConfirm) {
+      toast({ title: "Validation", description: "New passwords do not match", variant: "destructive" });
+      return;
+    }
+    setCpLoading(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: authUser?.id, currentPassword: cpCurrent, newPassword: cpNew }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast({ title: "Failed", description: data.error || "Could not change password", variant: "destructive" }); return; }
+      toast({ title: "Password Changed", description: "Your password has been updated" });
+      setCpDialogOpen(false); setCpCurrent(""); setCpNew(""); setCpConfirm("");
+    } catch {
+      toast({ title: "Error", description: "Connection failed", variant: "destructive" });
+    } finally { setCpLoading(false); }
+  };
 
   const openPrintWindow = () => {
     const pw = window.open("", "_blank");
@@ -924,12 +959,13 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
               )}
               {/* User Info & Logout */}
               <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 rounded-lg px-2 py-1 transition-colors" onClick={() => { setCpCurrent(""); setCpNew(""); setCpConfirm(""); setCpDialogOpen(true); }}>
                   <UserCircle className="w-5 h-5 text-slate-500" />
                   <div className="hidden sm:block">
                     <p className="text-xs font-medium text-slate-700">{authUser.name}</p>
                     <p className="text-[10px] text-slate-400">{authUser.role}</p>
                   </div>
+                  <KeyRound className="w-3 h-3 text-slate-400" />
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600">
                   <LogOut className="w-4 h-4" />
@@ -1024,6 +1060,21 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Change Password Dialog */}
+        <Dialog open={cpDialogOpen} onOpenChange={(open) => { if (!open) { setCpCurrent(""); setCpNew(""); setCpConfirm(""); } setCpDialogOpen(open); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5" /> Change Password</DialogTitle><DialogDescription>Update your account password</DialogDescription></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">Current Password</label><Input type="password" value={cpCurrent} onChange={(e) => setCpCurrent(e.target.value)} placeholder="Enter current password" className="h-10" /></div>
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">New Password</label><Input type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="Enter new password" className="h-10" /></div>
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">Confirm New Password</label><Input type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Confirm new password" className="h-10" /></div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCpDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleChangePassword} disabled={cpLoading}>{cpLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Change Password</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -1053,8 +1104,11 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
             {/* User Info & Logout */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
-              <UserCircle className="w-4 h-4 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+              <div className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 rounded-md px-1.5 py-1 transition-colors" onClick={() => { setCpCurrent(""); setCpNew(""); setCpConfirm(""); setCpDialogOpen(true); }}>
+                <UserCircle className="w-4 h-4 text-slate-500" />
+                <span className="text-xs font-medium text-slate-600 hidden sm:inline">{authUser.name}</span>
+                <KeyRound className="w-3 h-3 text-slate-400" />
+              </div>
               <Button variant="ghost" size="sm" onClick={() => { setAuthUser(null); setMainTab("requisition"); }} className="gap-1 text-slate-500 hover:text-red-600 h-7 w-7 p-0">
                 <LogOut className="w-3.5 h-3.5" />
               </Button>
@@ -1315,6 +1369,21 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             </div>
           </CardContent>
         </Card>
+        {/* Change Password Dialog */}
+        <Dialog open={cpDialogOpen} onOpenChange={(open) => { if (!open) { setCpCurrent(""); setCpNew(""); setCpConfirm(""); } setCpDialogOpen(open); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5" /> Change Password</DialogTitle><DialogDescription>Update your account password</DialogDescription></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">Current Password</label><Input type="password" value={cpCurrent} onChange={(e) => setCpCurrent(e.target.value)} placeholder="Enter current password" className="h-10" /></div>
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">New Password</label><Input type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="Enter new password" className="h-10" /></div>
+              <div><label className="text-sm font-medium text-slate-600 mb-1.5 block">Confirm New Password</label><Input type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Confirm new password" className="h-10" /></div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCpDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleChangePassword} disabled={cpLoading}>{cpLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Change Password</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
