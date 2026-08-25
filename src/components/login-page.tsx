@@ -27,6 +27,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -60,8 +61,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      toast({ title: "Validation", description: "Name, email and password are required", variant: "destructive" });
+    if (!name.trim() || !employeeId.trim() || !email.trim() || !password.trim()) {
+      toast({ title: "Validation", description: "Name, Employee ID, email and password are required", variant: "destructive" });
       return;
     }
     if (password.length < 4) {
@@ -77,7 +78,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        body: JSON.stringify({ name: name.trim(), employeeId: employeeId.trim(), email: email.trim(), password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -86,6 +87,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
       toast({ title: "Account Created!", description: "You can now sign in with your credentials" });
       setMode("login");
+      setName("");
+      setEmployeeId("");
       setPassword("");
       setConfirmPassword("");
     } catch {
@@ -96,6 +99,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const switchMode = () => {
     setMode(mode === "login" ? "signup" : "login");
+    setName("");
+    setEmployeeId("");
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
@@ -161,6 +166,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Full Name *</label>
                     <Input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your full name" className="h-11" autoFocus />
+                  </div>
+                  {/* Employee ID */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-600 mb-1.5 block">Employee ID *</label>
+                    <Input type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Enter your employee ID" className="h-11" />
                   </div>
                   {/* Email */}
                   <div>

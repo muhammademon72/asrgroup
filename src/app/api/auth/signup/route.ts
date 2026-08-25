@@ -18,10 +18,10 @@ function simpleHash(str: string): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password } = body;
+    const { name, employeeId, email, password } = body;
 
-    if (!name?.trim() || !email?.trim() || !password?.trim()) {
-      return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
+    if (!name?.trim() || !employeeId?.trim() || !email?.trim() || !password?.trim()) {
+      return NextResponse.json({ error: "Name, Employee ID, email and password are required" }, { status: 400 });
     }
 
     if (password.length < 4) {
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     const user = await db.user.create({
       data: {
         name: name.trim(),
+        employeeId: employeeId.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
         role: "User",
