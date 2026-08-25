@@ -736,50 +736,18 @@ export default function EquipmentRequisitionSystem() {
   const downloadPdf = async () => {
     if (pdfLoading) return;
     setPdfLoading(true);
-
-    // Use setTimeout to avoid blocking the UI thread
-    await new Promise(r => setTimeout(r, 50));
-
     try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const html = generatePrintHTML(currentRequisition);
-      const filename = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
-
-      // Render in hidden iframe to avoid main page freeze
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.left = '-9999px';
-      iframe.style.top = '0';
-      iframe.style.width = '794px';
-      iframe.style.height = '1123px';
-      iframe.style.border = 'none';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      iframeDoc?.open();
-      iframeDoc?.write(html);
-      iframeDoc?.close();
-
-      // Wait for iframe content to render
-      await new Promise(r => setTimeout(r, 300));
-
-      const body = iframeDoc?.body;
-      if (!body) throw new Error('iframe body not ready');
-
-      const worker = html2pdf();
-      const blob = await worker.set({
-        margin: 0,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(body).outputPdf('blob');
-
-      document.body.removeChild(iframe);
-
+      const res = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentRequisition),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
