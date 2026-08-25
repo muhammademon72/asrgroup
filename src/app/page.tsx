@@ -731,11 +731,40 @@ export default function EquipmentRequisitionSystem() {
     } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
   };
 
+  const [pdfLoading, setPdfLoading] = useState(false);
+
   const downloadPdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+
+    // Use setTimeout to avoid blocking the UI thread
+    await new Promise(r => setTimeout(r, 50));
+
     try {
       const html2pdf = (await import('html2pdf.js')).default;
       const html = generatePrintHTML(currentRequisition);
       const filename = `Requisition_${currentRequisition.id || 'draft'}_${currentRequisition.applicantName?.replace(/\s+/g, '_') || ''}.pdf`;
+
+      // Render in hidden iframe to avoid main page freeze
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '0';
+      iframe.style.width = '794px';
+      iframe.style.height = '1123px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      iframeDoc?.open();
+      iframeDoc?.write(html);
+      iframeDoc?.close();
+
+      // Wait for iframe content to render
+      await new Promise(r => setTimeout(r, 300));
+
+      const body = iframeDoc?.body;
+      if (!body) throw new Error('iframe body not ready');
 
       const worker = html2pdf();
       const blob = await worker.set({
@@ -743,7 +772,9 @@ export default function EquipmentRequisitionSystem() {
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(html).outputPdf('blob');
+      }).from(body).outputPdf('blob');
+
+      document.body.removeChild(iframe);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -755,8 +786,8 @@ export default function EquipmentRequisitionSystem() {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      const pw = window.open('', '_blank');
-      if (pw) { pw.document.write(generatePrintHTML(currentRequisition)); pw.document.close(); }
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -1056,7 +1087,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             {editId && (
               <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
             )}
-            <Button variant="outline" onClick={downloadPdf} className="gap-2"><FileDown className="w-4 h-4" /> PDF</Button>
+            <Button variant="outline" onClick={downloadPdf} disabled={pdfLoading} className="gap-2">{pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} {pdfLoading ? "Generating..." : "PDF"}</Button>
             <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
             {/* User Info & Logout */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
