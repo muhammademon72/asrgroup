@@ -582,7 +582,30 @@ interface AuthUser {
 }
 
 export default function EquipmentRequisitionSystem() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = window.localStorage.getItem("authUser");
+      return stored ? (JSON.parse(stored) as AuthUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Persist auth user to localStorage so refresh doesn't logout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (authUser) {
+        window.localStorage.setItem("authUser", JSON.stringify(authUser));
+      } else {
+        window.localStorage.removeItem("authUser");
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [authUser]);
+
   const [mainTab, setMainTab] = useState<"requisition" | "users" | "department" | "branch" | "address">("requisition");
   const [view, setView] = useState<"list" | "form">("list");
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
