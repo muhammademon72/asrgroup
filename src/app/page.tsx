@@ -22,6 +22,7 @@ import {
   Building2,
   MapPin,
   Network,
+  HardDrive,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,19 @@ const getDefaultItems = (): RequisitionItem[] => {
 
 // Dropdown defaults — will be fetched from DB at runtime
 const dropdownDefaults = { department: "Information Technology", branch: "Head Office", address: "Elephant Road" };
+
+// Format bytes to human-readable string (GB / MB / TB)
+const formatBytes = (bytes: number): string => {
+  if (!bytes || bytes < 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let val = bytes;
+  let unitIdx = 0;
+  while (val >= 1024 && unitIdx < units.length - 1) {
+    val /= 1024;
+    unitIdx++;
+  }
+  return `${val.toFixed(val >= 100 ? 0 : val >= 10 ? 1 : 2)} ${units[unitIdx]}`;
+};
 
 const createEmptyRequisition = (defaults = dropdownDefaults): Requisition => ({
   date: new Date().toLocaleDateString("en-GB"),
@@ -622,6 +636,8 @@ export default function EquipmentRequisitionSystem() {
   const [cpNew, setCpNew] = useState("");
   const [cpConfirm, setCpConfirm] = useState("");
   const [cpLoading, setCpLoading] = useState(false);
+  // Storage info
+  const [storage, setStorage] = useState<{ total: number; used: number; free: number; usedPercent: number } | null>(null);
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -657,6 +673,14 @@ export default function EquipmentRequisitionSystem() {
   }, []);
 
   useEffect(() => { fetchDropdownDefaults(); }, [fetchDropdownDefaults]);
+
+  const fetchStorage = useCallback(async () => {
+    try {
+      const res = await fetch('/api/storage');
+      if (res.ok) setStorage(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => { if (authUser?.role === 'Admin') fetchStorage(); }, [authUser, fetchStorage]);
 
   const fetchRequisitions = useCallback(async () => {
     try {
@@ -985,12 +1009,31 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             <DropdownManagement type="address" label="Address" icon={<MapPin className="w-5 h-5" />} />
           ) : (
           <>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="relative flex-1 max-w-md min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
             <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
+            {authUser?.role === "Admin" && storage && (
+              <div className="ml-auto flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-4 py-2 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-600">Storage Cluster</span>
+                </div>
+                <div className="w-40 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${storage.usedPercent > 80 ? 'bg-red-500' : storage.usedPercent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${storage.usedPercent}%` }} />
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-semibold text-slate-700">{formatBytes(storage.used)}</span>
+                  <span className="text-slate-400">/</span>
+                  <span className="text-slate-500">{formatBytes(storage.total)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs pl-2 border-l border-slate-200">
+                  <span className="text-emerald-600 font-medium">Free: {formatBytes(storage.free)}</span>
+                </div>
+              </div>
+            )}
           </div>
           {filteredRequisitions.length === 0 ? (
             <Card className="text-center py-16">
