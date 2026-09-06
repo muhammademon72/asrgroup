@@ -42,3 +42,20 @@ Stage Summary:
 - Connection: postgresql://neondb_owner:***@ep-rapid-meadow-axeec4dj-pooler.c-4.us-east-2.aws.neon.tech/neondb
 - Neon project ID: lingering-moon-38707150
 - Database is UNCLAIMED - user should claim at https://neon.new/claim/01a008cd-d5c8-737c-82da-165226786ff0 within 3 days to make it permanent
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Fix User Information form not showing admin-entered Branch List
+
+Work Log:
+- Diagnosed: user-management.tsx used hardcoded BRANCHES/DEPARTMENTS arrays instead of DB options
+- Admin-entered branches (Branch tab -> /api/dropdown-options?type=branch) were only used in requisition form
+- Added useEffect in user-management.tsx to fetch department+branch options from /api/dropdown-options
+- DB options override defaults; hardcoded arrays kept as fallback for empty DB
+- Applied to both Department and Branch selects in User Information form (same root cause)
+- Build passed, committed 743dff7, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- User Information form now shows admin-entered Branch and Department lists
+- Fallback to defaults only when DB has no options
