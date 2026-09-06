@@ -99,6 +99,31 @@ export default function UserManagement() {
   const [editId, setEditId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User>(emptyUser());
 
+  // Dropdown options loaded from DB (admin-managed via Department / Branch tabs).
+  // Fall back to hardcoded defaults only when the DB has no options yet.
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEPARTMENTS);
+  const [branchOptions, setBranchOptions] = useState<string[]>(BRANCHES);
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [deptRes, branchRes] = await Promise.all([
+          fetch("/api/dropdown-options?type=department"),
+          fetch("/api/dropdown-options?type=branch"),
+        ]);
+        if (deptRes.ok) {
+          const depts: { id: string; value: string }[] = await deptRes.json();
+          if (Array.isArray(depts) && depts.length > 0) setDepartmentOptions(depts.map((d) => d.value));
+        }
+        if (branchRes.ok) {
+          const branches: { id: string; value: string }[] = await branchRes.json();
+          if (Array.isArray(branches) && branches.length > 0) setBranchOptions(branches.map((b) => b.value));
+        }
+      } catch { /* keep hardcoded defaults */ }
+    };
+    loadOptions();
+  }, []);
+
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -302,7 +327,7 @@ export default function UserManagement() {
                     <Select value={currentUser.department} onValueChange={(val) => setCurrentUser({ ...currentUser, department: val })}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Select department" /></SelectTrigger>
                       <SelectContent>
-                        {DEPARTMENTS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        {departmentOptions.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   ) : (
@@ -317,7 +342,7 @@ export default function UserManagement() {
                     <Select value={currentUser.branch} onValueChange={(val) => setCurrentUser({ ...currentUser, branch: val })}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Select branch" /></SelectTrigger>
                       <SelectContent>
-                        {BRANCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        {branchOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   ) : (
