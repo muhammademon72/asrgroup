@@ -78,3 +78,23 @@ Stage Summary:
 - Admins can now change requisition status directly from the list using a dropdown
 - Default status remains "Draft" for new requisitions
 - Status options: Draft, Read, Submitted, Approved, Delivered, Rejected
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Replace hardcoded storage (500GB/150GB) with REAL Turso DB size
+
+Work Log:
+- Rewrote /api/storage/route.ts to query REAL SQLite/Turso stats via PRAGMA:
+  - PRAGMA page_count × PRAGMA page_size = actual DB file size in bytes
+  - Also returns real record counts: requisitions, users, items, dropdown options
+- Updated page.tsx storage state type: { dbSizeBytes, requisitions, users, items, options }
+- Replaced Storage Cluster widget (with fake progress bar / Used/Total/Free):
+  - New widget: "Database | X.X MB | Req: N | Users: N | Items: N | Options: N"
+- Swapped HardDrive icon for Database icon
+- Build passed, committed 3572f21, pushed to origin main
+
+Stage Summary:
+- Storage widget now shows REAL, honest data from the actual Turso database
+- Removed fake "500 GB / 150 GB" placeholders
+- Real DB size will likely be a few MB only (typical for small SQLite DBs)
