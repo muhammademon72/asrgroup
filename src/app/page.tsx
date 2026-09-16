@@ -940,6 +940,19 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
     return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
   };
 
+  // Full styling for the inline admin status dropdown trigger — mirrors the badge colors
+  // so admins see the same color coding users see on the static badge.
+  const getStatusTriggerClass = (status: string): string => {
+    const map: Record<string, string> = {
+      Draft:     "bg-yellow-100  text-yellow-800  border-yellow-300  hover:bg-yellow-200",
+      Submitted: "bg-orange-100  text-orange-800  border-orange-300  hover:bg-orange-200",
+      Approved:  "bg-green-100   text-green-800   border-green-300   hover:bg-green-200",
+      Delivered: "bg-emerald-700 text-white        border-emerald-800 hover:bg-emerald-800",
+      Rejected:  "bg-red-100     text-red-800     border-red-300     hover:bg-red-200",
+    };
+    return map[status] || "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200";
+  };
+
   const filteredRequisitions = requisitions.filter((r) =>
     r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1103,7 +1116,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                               onValueChange={(val) => handleStatusChange(req, val)}
                               disabled={statusUpdatingId === req.id}
                             >
-                              <SelectTrigger className="h-7 w-[120px] text-xs">
+                              <SelectTrigger className={`h-7 w-[120px] text-xs font-semibold border rounded-full px-2 ${getStatusTriggerClass(req.status)}`}>
                                 <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               <SelectContent>
