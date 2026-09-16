@@ -813,7 +813,7 @@ export default function EquipmentRequisitionSystem() {
   };
 
   // Status options for inline dropdown — Draft is the default
-  const STATUS_OPTIONS = ["Draft", "Read", "Submitted", "Approved", "Delivered", "Rejected"];
+  const STATUS_OPTIONS = ["Draft", "Submitted", "Approved", "Delivered", "Rejected"];
 
   const handleChangePassword = async () => {
     if (!cpCurrent || !cpNew || !cpConfirm) {
@@ -931,12 +931,11 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      Draft: "bg-yellow-100 text-yellow-800 border-yellow-300",
-      Read: "bg-indigo-100 text-indigo-800 border-indigo-300",
-      Submitted: "bg-blue-100 text-blue-800 border-blue-300",
-      Approved: "bg-green-100 text-green-800 border-green-300",
-      Delivered: "bg-teal-100 text-teal-800 border-teal-300",
-      Rejected: "bg-red-100 text-red-800 border-red-300",
+      Draft:      "bg-yellow-100  text-yellow-800  border-yellow-300",
+      Submitted:  "bg-orange-100  text-orange-800  border-orange-300",
+      Approved:   "bg-green-100   text-green-800   border-green-300",
+      Delivered:  "bg-emerald-700 text-white        border-emerald-800",
+      Rejected:   "bg-red-100     text-red-800     border-red-300",
     };
     return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
   };
