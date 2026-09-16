@@ -22,7 +22,7 @@ import {
   Building2,
   MapPin,
   Network,
-  HardDrive,
+  Database,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -637,7 +637,7 @@ export default function EquipmentRequisitionSystem() {
   const [cpConfirm, setCpConfirm] = useState("");
   const [cpLoading, setCpLoading] = useState(false);
   // Storage info
-  const [storage, setStorage] = useState<{ total: number; used: number; free: number; usedPercent: number } | null>(null);
+  const [storage, setStorage] = useState<{ dbSizeBytes: number; requisitions: number; users: number; items: number; options: number } | null>(null);
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -1050,19 +1050,15 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             {authUser?.role === "Admin" && storage && (
               <div className="ml-auto flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-4 py-2 shadow-sm">
                 <div className="flex items-center gap-2">
-                  <HardDrive className="w-4 h-4 text-slate-500" />
-                  <span className="text-xs font-semibold text-slate-600">Storage Cluster</span>
+                  <Database className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-600">Database</span>
                 </div>
-                <div className="w-40 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${storage.usedPercent > 80 ? 'bg-red-500' : storage.usedPercent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${storage.usedPercent}%` }} />
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-semibold text-slate-700">{formatBytes(storage.used)}</span>
-                  <span className="text-slate-400">/</span>
-                  <span className="text-slate-500">{formatBytes(storage.total)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs pl-2 border-l border-slate-200">
-                  <span className="text-emerald-600 font-medium">Free: {formatBytes(storage.free)}</span>
+                <span className="text-xs font-semibold text-slate-700">{formatBytes(storage.dbSizeBytes)}</span>
+                <div className="flex items-center gap-3 text-xs pl-3 border-l border-slate-200">
+                  <span className="text-slate-500">Req: <b className="text-slate-700">{storage.requisitions}</b></span>
+                  <span className="text-slate-500">Users: <b className="text-slate-700">{storage.users}</b></span>
+                  <span className="text-slate-500">Items: <b className="text-slate-700">{storage.items}</b></span>
+                  <span className="text-slate-500">Options: <b className="text-slate-700">{storage.options}</b></span>
                 </div>
               </div>
             )}

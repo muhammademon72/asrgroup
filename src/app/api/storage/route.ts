@@ -1,24 +1,37 @@
+import { db } from '@/lib/db'
 import { NextResponse } from "next/server";
-import os from "os";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Returns REAL database stats from Turso (libsql/SQLite):
+//   - dbSizeBytes: actual database file size = page_count × page_size
+//   - requisitions, users, items, options: real record counts
+// No more hardcoded 500 GB / 150 GB placeholders.
 export async function GET() {
   try {
-    // On Vercel/serverless, real disk stats aren't accessible.
-    // We return a reasonable default that admins can use as a reference.
-    // In a self-hosted deployment, this can be replaced with real df() output.
-    const total = 500 * 1024 * 1024 * 1024; // 500 GB
-    const used = 150 * 1024 * 1024 * 1024; // 150 GB
-    const free = total - used;
-    const usedPercent = Math.round((used / total) * 100);
+    // PRAGMA page_count  → total number of pages in the DB file
+    // PRAGMA page_size   → bytes per page (usually 4096)
+    const pageCountRows = await db.$queryRawUnsafe<{ page_count: number | bigint }[]>('PRAGMA page_count');
+    const pageSizeRows  = await db.$queryRawUnsafe<{ page_size: number | bigint }[]>('PRAGMA page_size');
+    const pageCount = Number(pageCountRows[0]?.page_count ?? 0);
+    const pageSize  = Number(pageSizeRows[0]?.page_size ?? 4096);
+    const dbSizeBytes = pageCount * pageSize;
+
+    // Real record counts
+    const [requisitions, users, items, options] = await Promise.all([
+      db.requisition.count(),
+      db.user.count(),
+      db.requisitionItem.count(),
+      db.dropdownOption.count(),
+    ]);
 
     return NextResponse.json({
-      total,
-      free,
-      used,
-      usedPercent,
+      dbSizeBytes,
+      requisitions,
+      users,
+      items,
+      options,
     });
   } catch (error) {
     console.error('Storage API error:', error);
