@@ -59,3 +59,22 @@ Work Log:
 Stage Summary:
 - User Information form now shows admin-entered Branch and Department lists
 - Fallback to defaults only when DB has no options
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Make Status column a dropdown system (default Draft) in requisition list
+
+Work Log:
+- Added PATCH /api/requisitions/[id] endpoint for status-only update (does not touch items)
+- Added STATUS_OPTIONS constant: Draft, Read, Submitted, Approved, Delivered, Rejected
+- Added handleStatusChange with optimistic update + revert on failure + toast
+- Replaced static status badge with inline <Select> dropdown in list view (admin only)
+- Non-admin users still see the static badge (read-only)
+- New requisitions default to "Draft" (already set in createEmptyRequisition)
+- Build passed, committed 1c7520b, pushed to origin main
+
+Stage Summary:
+- Admins can now change requisition status directly from the list using a dropdown
+- Default status remains "Draft" for new requisitions
+- Status options: Draft, Read, Submitted, Approved, Delivered, Rejected
