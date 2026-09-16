@@ -120,3 +120,21 @@ Stage Summary:
 - "Read" status option completely removed from the system
 - All status badges now use the user-specified color scheme consistently
 - Same colors apply in: list view inline dropdown, list view badge (non-admin), form view badge
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Apply status colors to admin's inline dropdown (not just static badge)
+
+Work Log:
+- Diagnosed: getStatusBadge() colors only applied to non-admin static <span> badge
+- Admin inline Select dropdown used default shadcn Select styling (white/gray)
+- Added getStatusTriggerClass() helper returning full status color classes
+- Applied to SelectTrigger className with rounded-full pill shape to match badge style
+- Color map mirrors badge: Draft=Yellow, Submitted=Orange, Approved=Green, Delivered=DarkGreen, Rejected=Red
+- tailwind-merge in shadcn Select ensures custom classes override defaults (bg-transparent etc.)
+- Build passed, committed d6c79b8, pushed to origin main
+
+Stage Summary:
+- Admin's inline status dropdown now shows the same color coding as the static badge
+- All 5 status colors visible in: admin dropdown trigger, non-admin badge, form view badge
