@@ -98,3 +98,25 @@ Stage Summary:
 - Storage widget now shows REAL, honest data from the actual Turso database
 - Removed fake "500 GB / 150 GB" placeholders
 - Real DB size will likely be a few MB only (typical for small SQLite DBs)
+
+---
+Task ID: 11
+Agent: Main Agent
+Task: Remove Read status option; update status background colors per name
+
+Work Log:
+- Removed "Read" from STATUS_OPTIONS array in list view dropdown
+- Updated getStatusBadge() color map per user request:
+  - Draft      → bg-yellow-100  / text-yellow-800  (Yellow)
+  - Submitted  → bg-orange-100  / text-orange-800  (Orange)
+  - Approved   → bg-green-100   / text-green-800   (Green)
+  - Delivered  → bg-emerald-700 / text-white        (Dark Green)
+  - Rejected   → bg-red-100     / text-red-800     (Red)
+- Form view dropdown already didn't have Read (no change needed there)
+- Verified no leftover "Read" references via rg
+- Build passed, committed 5ee5e24, pushed to origin main
+
+Stage Summary:
+- "Read" status option completely removed from the system
+- All status badges now use the user-specified color scheme consistently
+- Same colors apply in: list view inline dropdown, list view badge (non-admin), form view badge
