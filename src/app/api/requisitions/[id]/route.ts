@@ -78,6 +78,30 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
+// PATCH update single field (e.g. status) — does NOT touch items
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const body = await req.json()
+    // Only allow status updates via PATCH to keep it safe
+    const data: { status?: string } = {}
+    if (typeof body.status === 'string' && body.status.trim()) {
+      data.status = body.status.trim()
+    }
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+    const requisition = await db.requisition.update({
+      where: { id },
+      data,
+    })
+    return NextResponse.json(requisition)
+  } catch (error) {
+    console.error('Error patching requisition:', error)
+    return NextResponse.json({ error: 'Failed to update requisition' }, { status: 500 })
+  }
+}
+
 // DELETE requisition
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

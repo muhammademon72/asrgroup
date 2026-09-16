@@ -784,6 +784,37 @@ export default function EquipmentRequisitionSystem() {
     } finally { setLoading(false); setDeleteDialogOpen(false); setDeleteId(null); }
   };
 
+  // Inline status change from list view (admin only)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const handleStatusChange = async (req: Requisition, newStatus: string) => {
+    if (!req.id || newStatus === req.status) return;
+    setStatusUpdatingId(req.id);
+    // Optimistic update
+    setRequisitions((prev) => prev.map((r) => (r.id === req.id ? { ...r, status: newStatus } : r)));
+    try {
+      const res = await fetch(`/api/requisitions/${req.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast({ title: "Status Updated", description: `Marked as ${newStatus}` });
+      } else {
+        // Revert on failure
+        setRequisitions((prev) => prev.map((r) => (r.id === req.id ? { ...r, status: req.status } : r)));
+        toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      }
+    } catch {
+      setRequisitions((prev) => prev.map((r) => (r.id === req.id ? { ...r, status: req.status } : r)));
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  // Status options for inline dropdown — Draft is the default
+  const STATUS_OPTIONS = ["Draft", "Read", "Submitted", "Approved", "Delivered", "Rejected"];
+
   const handleChangePassword = async () => {
     if (!cpCurrent || !cpNew || !cpConfirm) {
       toast({ title: "Validation", description: "All fields are required", variant: "destructive" });
@@ -1071,7 +1102,24 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                         <td className="p-3 text-sm">{req.category}</td>
                         <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
                         <td className="p-3">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+                          {authUser.role === "Admin" && req.id ? (
+                            <Select
+                              value={req.status}
+                              onValueChange={(val) => handleStatusChange(req, val)}
+                              disabled={statusUpdatingId === req.id}
+                            >
+                              <SelectTrigger className="h-7 w-[120px] text-xs">
+                                <SelectValue placeholder="Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {STATUS_OPTIONS.map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(req.status)}`}>{req.status}</span>
+                          )}
                         </td>
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1">
