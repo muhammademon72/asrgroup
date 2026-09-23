@@ -175,3 +175,24 @@ Stage Summary:
 - Login card now opens with: [icon] + ASR GROUP + Equipment Requisition System, then form
 - Sign In/Sign Up headings and their subtitles are gone (brand name is the single heading)
 - Footer still shows "&copy; 2026 ASR GROUP — Information and Technology Department"
+
+---
+Task ID: 15
+Agent: Main Agent
+Task: Make Sign In card a bit smaller
+
+Work Log:
+- Reduced card max-width: max-w-md (448px) → max-w-sm (384px)
+- Reduced card padding: p-8 → p-6
+- Reduced brand icon: w-16 h-16 → w-14 h-14 (icon stroke w-8 → w-7)
+- Reduced brand title: text-2xl → text-xl
+- Reduced subtitle: text-sm → text-xs
+- Reduced brand header bottom margin: mb-6 → mb-5, icon mb-3 → mb-2
+- Reduced form vertical spacing: space-y-5 → space-y-4
+- Reduced all input/button heights: h-11 (44px) → h-10 (40px)
+- Build passed, committed ed0c3d6, pushed to origin main
+
+Stage Summary:
+- Login card is now visibly smaller and more compact
+- All elements (icon, title, inputs, button) scaled down proportionally for visual balance
+- Same changes apply to Sign Up mode
