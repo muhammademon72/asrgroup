@@ -109,23 +109,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4 shadow-lg">
-            {mode === "login" ? <LogIn className="w-8 h-8 text-white" /> : <UserPlus className="w-8 h-8 text-white" />}
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">ASR GROUP</h1>
-          <p className="text-sm text-slate-500 mt-1">Equipment Requisition System</p>
-        </div>
-
         {/* Card */}
         <Card className="shadow-xl border-slate-200">
           <CardContent className="p-8">
+            {/* Brand header inside card */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-3 shadow-lg">
+                {mode === "login" ? <LogIn className="w-8 h-8 text-white" /> : <UserPlus className="w-8 h-8 text-white" />}
+              </div>
+              <h1 className="text-2xl font-bold text-slate-800">ASR GROUP</h1>
+              <p className="text-sm text-slate-500 mt-1">Equipment Requisition System</p>
+            </div>
             {mode === "login" ? (
               <>
-                <h2 className="text-lg font-semibold text-slate-700 mb-1">Sign In</h2>
-                <p className="text-sm text-slate-400 mb-6">Enter your credentials to access the system</p>
-
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Email Address</label>
@@ -158,9 +154,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </>
             ) : (
               <>
-                <h2 className="text-lg font-semibold text-slate-700 mb-1">Sign Up</h2>
-                <p className="text-sm text-slate-400 mb-6">Create a new account to access the system</p>
-
                 <form onSubmit={handleSignUp} className="space-y-5">
                   {/* Name */}
                   <div>
