@@ -1435,23 +1435,20 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
               )}
             </div>
 
-            {/* Status */}
-            {editId && (
+            {/* Status — hidden when a User (non-admin) is editing the form;
+                users should not change status themselves, admins control it. */}
+            {editId && !(isEditing && authUser?.role === "User") && (
               <div className="mb-8">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
-                {isEditing && (authUser?.role === "Admin" || authUser?.role === "User") ? (
+                {isEditing && authUser?.role === "Admin" ? (
                   <Select value={currentRequisition.status} onValueChange={(val) => setCurrentRequisition({ ...currentRequisition, status: val })}>
                     <SelectTrigger className="mt-1 w-[200px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Draft">Draft</SelectItem>
                       <SelectItem value="Submitted">Submitted</SelectItem>
-                      {authUser?.role === "Admin" && (
-                        <>
-                          <SelectItem value="Approved">Approved</SelectItem>
-                          <SelectItem value="Delivered">Delivered</SelectItem>
-                          <SelectItem value="Rejected">Rejected</SelectItem>
-                        </>
-                      )}
+                      <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Delivered">Delivered</SelectItem>
+                      <SelectItem value="Rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : (
