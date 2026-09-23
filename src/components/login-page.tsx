@@ -108,35 +108,35 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         {/* Card */}
         <Card className="shadow-xl border-slate-200">
-          <CardContent className="p-8">
+          <CardContent className="p-6">
             {/* Brand header inside card */}
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-3 shadow-lg">
-                {mode === "login" ? <LogIn className="w-8 h-8 text-white" /> : <UserPlus className="w-8 h-8 text-white" />}
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-2 shadow-lg">
+                {mode === "login" ? <LogIn className="w-7 h-7 text-white" /> : <UserPlus className="w-7 h-7 text-white" />}
               </div>
-              <h1 className="text-2xl font-bold text-slate-800">ASR GROUP</h1>
-              <p className="text-sm text-slate-500 mt-1">Equipment Requisition System</p>
+              <h1 className="text-xl font-bold text-slate-800">ASR GROUP</h1>
+              <p className="text-xs text-slate-500 mt-1">Equipment Requisition System</p>
             </div>
             {mode === "login" ? (
               <>
-                <form onSubmit={handleLogin} className="space-y-5">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Email Address</label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@asrgroup.com" className="h-11" autoComplete="email" autoFocus />
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@asrgroup.com" className="h-10" autoComplete="email" autoFocus />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Password</label>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" className="h-11 pr-10" autoComplete="current-password" />
+                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" className="h-10 pr-10" autoComplete="current-password" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-base font-medium gap-2">
+                  <Button type="submit" disabled={loading} className="w-full h-10 bg-slate-800 hover:bg-slate-700 text-base font-medium gap-2">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
@@ -154,27 +154,27 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </>
             ) : (
               <>
-                <form onSubmit={handleSignUp} className="space-y-5">
+                <form onSubmit={handleSignUp} className="space-y-4">
                   {/* Name */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Full Name *</label>
-                    <Input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your full name" className="h-11" autoFocus />
+                    <Input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your full name" className="h-10" autoFocus />
                   </div>
                   {/* Employee ID */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Employee ID *</label>
-                    <Input type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Enter your employee ID" className="h-11" />
+                    <Input type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Enter your employee ID" className="h-10" />
                   </div>
                   {/* Email */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Email Address *</label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="h-11" autoComplete="email" />
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" className="h-10" autoComplete="email" />
                   </div>
                   {/* Password */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Password *</label>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="h-11 pr-10" autoComplete="new-password" />
+                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="h-10 pr-10" autoComplete="new-password" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -183,9 +183,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   {/* Confirm Password */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Confirm Password *</label>
-                    <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" className="h-11" autoComplete="new-password" />
+                    <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm your password" className="h-10" autoComplete="new-password" />
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-base font-medium gap-2">
+                  <Button type="submit" disabled={loading} className="w-full h-10 bg-slate-800 hover:bg-slate-700 text-base font-medium gap-2">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                     {loading ? "Creating account..." : "Sign Up"}
                   </Button>
