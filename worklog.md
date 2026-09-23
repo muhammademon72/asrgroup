@@ -157,3 +157,21 @@ Stage Summary:
 - Users (non-admins) can no longer see/edit status when editing a requisition
 - Status stays at whatever it was (typically Draft) — admins control status changes
 - Admin retains full status control via both inline list dropdown and form view dropdown
+
+---
+Task ID: 14
+Agent: Main Agent
+Task: Move ASR GROUP brand title into login card, remove Sign In/Sign Up headings
+
+Work Log:
+- User asked (via text after image upload failed 3x): move ASR GROUP + Equipment Requisition System text into the card; remove Sign In + Enter your credentials... subtitle
+- Removed the separate top "Logo & Title" section above the card
+- Moved icon + ASR GROUP (h1) + Equipment Requisition System subtitle INTO the top of the Card
+- Removed "Sign In" + "Enter your credentials to access the system" from login mode
+- Removed "Sign Up" + "Create a new account to access the system" from signup mode (for consistency)
+- Build passed, committed 5211bc8, pushed to origin main
+
+Stage Summary:
+- Login card now opens with: [icon] + ASR GROUP + Equipment Requisition System, then form
+- Sign In/Sign Up headings and their subtitles are gone (brand name is the single heading)
+- Footer still shows "&copy; 2026 ASR GROUP — Information and Technology Department"
