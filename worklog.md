@@ -138,3 +138,22 @@ Work Log:
 Stage Summary:
 - Admin's inline status dropdown now shows the same color coding as the static badge
 - All 5 status colors visible in: admin dropdown trigger, non-admin badge, form view badge
+
+---
+Task ID: 13
+Agent: Main Agent
+Task: Hide Status option from User role when editing requisition form
+
+Work Log:
+- Updated Status section logic in form view of page.tsx:
+  - Outer condition: {editId && !(isEditing && authUser?.role === "User") && (...)}
+    => User editing existing requisition hides entire Status section
+    => Admin editing shows dropdown (all 5 options: Draft, Submitted, Approved, Delivered, Rejected)
+    => View mode for anyone shows static badge (no change)
+- Removed nested Admin-only fragment (no longer needed since User editing hides whole section)
+- Build passed, committed 692c0e6, pushed to origin main
+
+Stage Summary:
+- Users (non-admins) can no longer see/edit status when editing a requisition
+- Status stays at whatever it was (typically Draft) — admins control status changes
+- Admin retains full status control via both inline list dropdown and form view dropdown
