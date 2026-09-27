@@ -1202,7 +1202,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             {editId && (
               <Button variant="outline" onClick={() => handleCopyToNew(currentRequisition)} className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"><Copy className="w-4 h-4" /> Copy to New</Button>
             )}
-            <Button variant="outline" onClick={openPrintWindow} className="gap-2"><Printer className="w-4 h-4" /> Print</Button>
+            {/* Print button hidden — use Print icon in the list's Actions column instead */}
             {/* User Info & Logout */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200">
               <div className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 rounded-md px-1.5 py-1 transition-colors" onClick={() => { setCpCurrent(""); setCpNew(""); setCpConfirm(""); setCpDialogOpen(true); }}>
