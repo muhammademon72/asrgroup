@@ -196,3 +196,22 @@ Stage Summary:
 - Login card is now visibly smaller and more compact
 - All elements (icon, title, inputs, button) scaled down proportionally for visual balance
 - Same changes apply to Sign Up mode
+
+---
+Task ID: 16
+Agent: Main Agent
+Task: Add Print icon to Actions column in requisition list
+
+Work Log:
+- Refactored openPrintWindow() to accept optional req parameter (defaults to currentRequisition)
+- Added new Print icon button in Actions column, between View and Edit buttons
+- Printer icon already imported from lucide-react
+- Print button visible to all users (both Admin and User roles)
+- Order: View → Print → Edit → Copy → Delete
+- Indigo color (text-indigo-600) chosen for distinctiveness from other action colors
+- Build passed, committed 1883536, pushed to origin main
+
+Stage Summary:
+- Print icon now appears in Actions column for every requisition in the list
+- Clicking it opens the print window directly (no need to open the form first)
+- Both Admin and User can print any requisition they can see
