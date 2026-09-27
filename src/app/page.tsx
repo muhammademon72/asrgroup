@@ -844,10 +844,10 @@ export default function EquipmentRequisitionSystem() {
     } finally { setCpLoading(false); }
   };
 
-  const openPrintWindow = () => {
+  const openPrintWindow = (req?: Requisition) => {
     const pw = window.open("", "_blank");
     if (!pw) return;
-    pw.document.write(generatePrintHTML(currentRequisition));
+    pw.document.write(generatePrintHTML(req ?? currentRequisition));
     pw.document.close();
     setTimeout(() => pw.print(), 500);
   };
@@ -1132,6 +1132,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => openPrintWindow(req)} title="Print" className="h-8 w-8 p-0"><Printer className="w-4 h-4 text-indigo-600" /></Button>
                             {(authUser.role === "Admin" || req.status === "Draft") && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
                             )}
