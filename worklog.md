@@ -215,3 +215,23 @@ Stage Summary:
 - Print icon now appears in Actions column for every requisition in the list
 - Clicking it opens the print window directly (no need to open the form first)
 - Both Admin and User can print any requisition they can see
+
+---
+Task ID: 17
+Agent: Main Agent
+Task: Hide duplicate Print button in form view header
+
+Work Log:
+- Image upload failed 5x across session (gateway issue) — proceeded based on user's text context
+- Removed the standalone "Print" button from form view header (line ~1205)
+- Kept the openPrintWindow() function intact (still used by the Actions column Print icon)
+- Actions column Print icon (added in task 16) remains the single print entry point
+- Build passed, committed bd491da, pushed to origin main
+
+Stage Summary:
+- Form view no longer shows a separate "Print" button in the header
+- Users print via the Printer icon in the requisition list's Actions column
+- openPrintWindow(req?) helper still works (accepts optional req, defaults to currentRequisition)
+
+NOTE: If the user actually wanted to hide a DIFFERENT Print option (e.g., the new Actions column
+icon, or some other print-related button), this commit should be reverted and the correct one hidden.
