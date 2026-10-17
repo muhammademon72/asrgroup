@@ -914,7 +914,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:0;color:#1a
 <div class="top-section">
 <div class="left-col">
 <div class="field"><span class="field-label">Date:</span> <span class="field-value">${req.date}</span></div>
-<div class="field" style="margin-top:12px"><span class="field-label">To,</span></div>
+<div class="field" style="margin-top:0.25in"><span class="field-label">To,</span></div>
 <div class="field"><span class="field-value" style="font-weight:700">${req.organizationName}</span></div>
 <div class="field"><span class="field-value">${req.department}</span></div>
 <div class="field"><span class="field-value" style="font-size:11px">${req.address}</span></div>
