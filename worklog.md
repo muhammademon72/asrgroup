@@ -365,3 +365,19 @@ Work Log:
 
 Stage Summary:
 - PDF/Print layout now has exact 0.25 inch space above the "To," line
+
+---
+Task ID: 24
+Agent: Main Agent
+Task: PDF top space 0.25 inch (user screenshot, red mark above form box)
+
+Work Log:
+- User screenshot showed red rectangle at very top of PDF page (above form box border)
+- Added padding-top:0.25in to the .pdf-root capture container in downloadPdf()
+  — white space now included in canvas, appears above the form box in the PDF
+- Print window untouched (already has 10mm @page top margin)
+- E2E verified: downloaded PDF shows clear 0.25in gap above form border, still single page
+- Build passed, committed f33f01a, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- Downloaded PDF now starts with exact 0.25 inch white space above the form box
