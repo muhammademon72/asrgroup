@@ -256,3 +256,21 @@ Stage Summary:
 - Sign Up page now shows a wide 2-column form with 7 fields
 - Branch/Department values saved to the user record on signup
 - Dropdown options come from the admin-managed Department/Branch tabs
+
+---
+Task ID: 19
+Agent: Main Agent
+Task: Employee ID input — auto UPPERCASE everything typed
+
+Work Log:
+- Applied e.target.value.toUpperCase() in onChange for all 3 Employee ID inputs:
+  1. Sign Up form (login-page.tsx — the "Employee ID *" field user referenced)
+  2. Requisition form User Information section (page.tsx)
+  3. User Management form (user-management.tsx)
+- Added `uppercase` Tailwind class + autoCapitalize="characters" (mobile keyboard hint)
+- Applied to all 3 for data consistency (IDs stored uppercase everywhere)
+- Build passed, committed 2d50aa7, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- Whatever is typed in any Employee ID field instantly becomes UPPERCASE
+- Existing lowercase DB values unaffected until re-saved through the form
