@@ -300,3 +300,32 @@ Stage Summary:
 - Requisition list now shows Branch Name between Date and Applicant
 - Every user (admin + user) can download any requisition as a real .pdf file
 - Print icon unchanged; PDF icon adds direct file download (no print dialog)
+
+---
+Task ID: 21
+Agent: Main Agent
+Task: New Requisition — mandatory (*) validation for 7 fields
+
+Work Log:
+- Expanded handleSave validation from 2 checks to 7, in form order:
+  Applicant Name → Applicant Department → Employee ID → Branch Name →
+  Address → Contact → at least one equipment item (Select column)
+- Added red asterisks to all 7 labels in the form UI:
+  6 User Information table labels + equipment table "Select" header
+- Dropdown fields (Department/Branch/Address) prefill defaults so their
+  validation acts as a safety net; text inputs (Name/EmployeeID/Contact) are the real gates
+- E2E tested with agent-browser on local prod build:
+  1. Empty form Save → "Applicant Name is required" ✓
+  2. Filled name/emp/contact via React native setter, saved without equipment
+     → "Please select at least one equipment item (Select * column)" ✓
+  3. Checked first equipment checkbox → "Saved Successfully" ✓
+- Cleaned up test requisition from real Turso DB via DELETE API (verified gone)
+- Debug note: client-side exception during test was a STALE next-server process
+  serving old chunks (EADDRINUSE) — fixed by killing all next processes and
+  restarting; not a code bug
+- Build passed, committed bc9f2c6, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- All 7 fields are now mandatory with visible red asterisks
+- Save blocked with clear per-field error toasts until all requirements met
+- Equipment selection (at least 1 item) now required before saving
