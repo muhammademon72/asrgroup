@@ -235,3 +235,24 @@ Stage Summary:
 
 NOTE: If the user actually wanted to hide a DIFFERENT Print option (e.g., the new Actions column
 icon, or some other print-related button), this commit should be reverted and the correct one hidden.
+
+---
+Task ID: 18
+Agent: Main Agent
+Task: Wide Sign Up form with Branch Name & Department fields
+
+Work Log:
+- Updated signup API (/api/auth/signup): now accepts + validates branch & department, saves to User model
+- Updated login-page.tsx Sign Up form:
+  - Card width: max-w-sm in login mode, max-w-lg in signup mode (wide form)
+  - 2-column grid layout (grid-cols-2) on desktop, single column on mobile
+  - Field order: Full Name | Branch Name / Department | Employee ID / Email (full width) / Password | Confirm Password
+  - Branch Name & Department are dropdowns loaded from /api/dropdown-options (same source as User Management & requisition form)
+  - Fallback default lists if DB has no options
+  - Validation requires all 7 fields
+- Build passed, committed 33bf926, pushed to origin main
+
+Stage Summary:
+- Sign Up page now shows a wide 2-column form with 7 fields
+- Branch/Department values saved to the user record on signup
+- Dropdown options come from the admin-managed Department/Branch tabs
