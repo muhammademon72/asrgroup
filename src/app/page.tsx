@@ -975,7 +975,8 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
 
       const container = document.createElement("div");
       container.className = "pdf-root";
-      container.style.cssText = "position:fixed;top:0;left:-10000px;width:794px;background:#ffffff;";
+      // 0.25in white space at the very top of the PDF page (above the form box)
+      container.style.cssText = "position:fixed;top:0;left:-10000px;width:794px;background:#ffffff;padding-top:0.25in;";
       container.innerHTML = `<style>${scopedCss}</style>${bodyMatch?.[1] ?? ""}`;
       document.body.appendChild(container);
       await new Promise((r) => setTimeout(r, 200));
