@@ -720,12 +720,33 @@ export default function EquipmentRequisitionSystem() {
   };
 
   const handleSave = async () => {
+    // Required fields (*) — validated in form order
     if (!currentRequisition.applicantName.trim()) {
       toast({ title: "Validation Error", description: "Applicant Name is required", variant: "destructive" });
       return;
     }
+    if (!currentRequisition.applicantDepartment.trim()) {
+      toast({ title: "Validation Error", description: "Applicant Department is required", variant: "destructive" });
+      return;
+    }
     if (!currentRequisition.employeeId.trim()) {
       toast({ title: "Validation Error", description: "Employee ID is required", variant: "destructive" });
+      return;
+    }
+    if (!currentRequisition.branchName.trim()) {
+      toast({ title: "Validation Error", description: "Branch Name is required", variant: "destructive" });
+      return;
+    }
+    if (!currentRequisition.applicantAddress.trim()) {
+      toast({ title: "Validation Error", description: "Address is required", variant: "destructive" });
+      return;
+    }
+    if (!currentRequisition.contact.trim()) {
+      toast({ title: "Validation Error", description: "Contact is required", variant: "destructive" });
+      return;
+    }
+    if (!currentRequisition.items.some((item) => item.selected)) {
+      toast({ title: "Validation Error", description: "Please select at least one equipment item (Select * column)", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -1360,7 +1381,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                 <table className="w-full text-sm">
                   <tbody>
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs w-[40%]">Applicant Name <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <Input value={currentRequisition.applicantName} onChange={(e) => setCurrentRequisition({ ...currentRequisition, applicantName: e.target.value })} className="h-7 text-sm" />
@@ -1371,7 +1392,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                     </tr>
                     {/* Applicant Department - DROPDOWN */}
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Applicant Department <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <DropdownWithManage
@@ -1388,7 +1409,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                       </td>
                     </tr>
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value.toUpperCase() })} className="h-7 text-sm font-mono uppercase" autoCapitalize="characters" />
@@ -1399,7 +1420,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                     </tr>
                     {/* Branch Name - DROPDOWN */}
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Branch Name <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <DropdownWithManage
@@ -1417,7 +1438,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                     </tr>
                     {/* Address - DROPDOWN */}
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Address <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <DropdownWithManage
@@ -1434,7 +1455,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                       </td>
                     </tr>
                     <tr>
-                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact</td>
+                      <td className="p-2 bg-slate-100 font-semibold text-xs">Contact <span className="text-red-500">*</span></td>
                       <td className="p-2">
                         {isEditing ? (
                           <Input value={currentRequisition.contact} onChange={(e) => setCurrentRequisition({ ...currentRequisition, contact: e.target.value })} className="h-7 text-sm" />
@@ -1466,7 +1487,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                 <thead>
                   <tr className="bg-slate-200 border-b border-slate-400">
                     <th className="p-2 text-center font-bold text-xs w-[50px]">SL</th>
-                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select</th>
+                    <th className="p-2 text-center font-bold text-xs w-[50px]">Select <span className="text-red-500">*</span></th>
                     <th className="p-2 text-left font-bold text-xs">EQUIPMENT NAME</th>
                     <th className="p-2 text-left font-bold text-xs">DESCRIPTION</th>
                     <th className="p-2 text-center font-bold text-xs w-[80px]">QTY</th>
