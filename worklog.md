@@ -274,3 +274,29 @@ Work Log:
 Stage Summary:
 - Whatever is typed in any Employee ID field instantly becomes UPPERCASE
 - Existing lowercase DB values unaffected until re-saved through the form
+
+---
+Task ID: 20
+Agent: Main Agent
+Task: Requisition List — Branch Name column + PDF Download icon in Actions
+
+Work Log:
+- Added "Branch Name" column immediately right of Date column (header + cell showing req.branchName)
+- Installed jspdf + html2canvas-pro (pro fork needed for Tailwind v4 oklch colors)
+- Added downloadPdf(req) in page.tsx:
+  - Reuses generatePrintHTML, scopes its CSS under .pdf-root (prevents * and body selectors leaking into app DOM)
+  - Renders off-screen div (794px = A4 width @96dpi), html2canvas capture at scale 2
+  - jsPDF A4 portrait; multi-page slicing when content exceeds one page
+  - Dynamic imports → libraries code-split, no initial-load impact
+  - Filename: Requisition-{Applicant_Name}-{date}.pdf
+- Actions column order now: View → Print → Download PDF (purple FileDown icon, Loader2 while generating) → Edit → Copy → Delete
+- Bonus: branchName added to search filter (matches new column)
+- E2E verified with agent-browser on local prod build: logged in as admin, clicked icon,
+  PDF downloaded to /home/z/Downloads/Requisition-Md_Emon_Hossain-14-08-2026.pdf (297KB),
+  visually confirmed A4 layout renders correctly, zero console errors
+- Build passed, committed 9d2429f, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- Requisition list now shows Branch Name between Date and Applicant
+- Every user (admin + user) can download any requisition as a real .pdf file
+- Print icon unchanged; PDF icon adds direct file download (no print dialog)
