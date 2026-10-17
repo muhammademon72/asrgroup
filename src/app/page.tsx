@@ -1305,7 +1305,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                       <td className="p-2 bg-slate-100 font-semibold text-xs">Employee ID</td>
                       <td className="p-2">
                         {isEditing ? (
-                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value })} className="h-7 text-sm font-mono" />
+                          <Input value={currentRequisition.employeeId} onChange={(e) => setCurrentRequisition({ ...currentRequisition, employeeId: e.target.value.toUpperCase() })} className="h-7 text-sm font-mono uppercase" autoCapitalize="characters" />
                         ) : (
                           <span className="font-mono">{currentRequisition.employeeId}</span>
                         )}

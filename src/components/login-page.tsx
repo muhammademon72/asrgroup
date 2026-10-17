@@ -245,7 +245,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   {/* Employee ID */}
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Employee ID *</label>
-                    <Input type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="Enter your employee ID" className="h-10" />
+                    <Input type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value.toUpperCase())} placeholder="Enter your employee ID" className="h-10 uppercase" autoCapitalize="characters" />
                   </div>
                   {/* Email */}
                   <div className="sm:col-span-2">

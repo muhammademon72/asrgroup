@@ -314,7 +314,7 @@ export default function UserManagement() {
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Employee ID</label>
                   {isEditing ? (
-                    <Input value={currentUser.employeeId} onChange={(e) => setCurrentUser({ ...currentUser, employeeId: e.target.value })} className="mt-1" placeholder="Enter employee ID" />
+                    <Input value={currentUser.employeeId} onChange={(e) => setCurrentUser({ ...currentUser, employeeId: e.target.value.toUpperCase() })} className="mt-1 uppercase" placeholder="Enter employee ID" autoCapitalize="characters" />
                   ) : (
                     <p className="mt-1 text-sm font-mono text-slate-800">{currentUser.employeeId || "—"}</p>
                   )}
