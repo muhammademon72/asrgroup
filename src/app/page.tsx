@@ -1054,13 +1054,29 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
     return map[status] || "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200";
   };
 
-  const filteredRequisitions = requisitions.filter((r) =>
-    r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.id?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // All-field search: every visible column + reason + equipment items are searchable
+  const filteredRequisitions = requisitions.filter((r) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      r.applicantName.toLowerCase().includes(q) ||
+      r.employeeId.toLowerCase().includes(q) ||
+      r.branchName.toLowerCase().includes(q) ||
+      r.applicantDepartment.toLowerCase().includes(q) ||
+      r.applicantAddress.toLowerCase().includes(q) ||
+      r.contact.toLowerCase().includes(q) ||
+      r.organizationName.toLowerCase().includes(q) ||
+      r.date.toLowerCase().includes(q) ||
+      r.category.toLowerCase().includes(q) ||
+      r.status.toLowerCase().includes(q) ||
+      r.reason.toLowerCase().includes(q) ||
+      String(r.totalAmount).includes(q) ||
+      r.id?.toLowerCase().includes(q) ||
+      r.items.some((it) =>
+        it.equipmentName.toLowerCase().includes(q) ||
+        it.description.toLowerCase().includes(q)
+      )
+    );
+  });
 
   // ===================== LOGIN GUARD =====================
   if (!authUser) {
@@ -1158,7 +1174,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="relative flex-1 max-w-md min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input placeholder="Search by name, employee ID, organization..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+              <Input placeholder="Search all: name, ID, branch, address, contact, status, equipment..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
             <span className="text-sm text-slate-500">{filteredRequisitions.length} record(s) found</span>
             {authUser?.role === "Admin" && storage && (
@@ -1195,9 +1211,9 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Branch Name</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Address</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
-                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Total Amount</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Status</th>
                       <th className="text-center p-3 text-xs font-semibold text-slate-600">Actions</th>
@@ -1209,9 +1225,9 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                         <td className="p-3 text-sm">{idx + 1}</td>
                         <td className="p-3 text-sm">{req.date}</td>
                         <td className="p-3 text-sm">{req.branchName}</td>
+                        <td className="p-3 text-sm text-slate-600">{req.applicantAddress}</td>
                         <td className="p-3 text-sm font-medium">{req.applicantName}</td>
                         <td className="p-3 text-sm font-mono">{req.employeeId}</td>
-                        <td className="p-3 text-sm">{req.category}</td>
                         <td className="p-3 text-sm font-semibold">৳{req.totalAmount.toLocaleString()}</td>
                         <td className="p-3">
                           {authUser.role === "Admin" && req.id ? (
