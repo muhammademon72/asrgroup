@@ -14,6 +14,7 @@ import {
   Loader2,
   KeyRound,
   FileText,
+  FileDown,
   Settings2,
   Pencil,
   Check,
@@ -786,6 +787,7 @@ export default function EquipmentRequisitionSystem() {
 
   // Inline status change from list view (admin only)
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [pdfGeneratingId, setPdfGeneratingId] = useState<string | null>(null);
   const handleStatusChange = async (req: Requisition, newStatus: string) => {
     if (!req.id || newStatus === req.status) return;
     setStatusUpdatingId(req.id);
@@ -929,6 +931,84 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
 <div class="signature-block"><div class="signature-line"></div><div class="signature-label">Authority</div></div>
 </div></div></body></html>`;
 
+  // PDF Download: renders the same print layout off-screen, captures it as an image
+  // and saves it as a real .pdf file (multi-page safe). Uses dynamic imports so the
+  // PDF libraries are code-split and don't slow down initial page load.
+  const downloadPdf = async (req: Requisition) => {
+    if (pdfGeneratingId) return;
+    setPdfGeneratingId(req.id ?? "new");
+    try {
+      const [{ jsPDF }, html2canvas] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas-pro"),
+      ]);
+
+      // Build the print HTML, then scope its CSS under .pdf-root so the injected
+      // styles (*, body selectors) cannot leak into the main app document.
+      const rawHtml = generatePrintHTML(req);
+      const styleMatch = rawHtml.match(/<style>([\s\S]*?)<\/style>/);
+      const bodyMatch = rawHtml.match(/<body>([\s\S]*?)<\/body>/);
+      const scopedCss = (styleMatch?.[1] ?? "")
+        .replace(/(^|\s)\*\{/g, "$1.pdf-root *{")
+        .replace(/(^|\s)body\{/g, "$1.pdf-root{");
+
+      const container = document.createElement("div");
+      container.className = "pdf-root";
+      container.style.cssText = "position:fixed;top:0;left:-10000px;width:794px;background:#ffffff;";
+      container.innerHTML = `<style>${scopedCss}</style>${bodyMatch?.[1] ?? ""}`;
+      document.body.appendChild(container);
+      await new Promise((r) => setTimeout(r, 200));
+
+      const canvas = await html2canvas.default(container, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+      });
+      document.body.removeChild(container);
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      if (imgH <= pageH) {
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, imgW, imgH);
+      } else {
+        // Content taller than one A4 page — slice the canvas across multiple pages
+        const pxPerMm = canvas.width / imgW;
+        const sliceHpx = Math.floor(pageH * pxPerMm);
+        let offset = 0;
+        while (offset < canvas.height) {
+          const sliceH = Math.min(sliceHpx, canvas.height - offset);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = sliceH;
+          const ctx = slice.getContext("2d");
+          if (ctx) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, slice.width, slice.height);
+            ctx.drawImage(canvas, 0, offset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          }
+          if (offset > 0) pdf.addPage();
+          pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, imgW, (sliceH * imgW) / canvas.width);
+          offset += sliceHpx;
+        }
+      }
+
+      const safeName = (req.applicantName || "form").replace(/[^a-zA-Z0-9]+/g, "_");
+      const safeDate = (req.date || "draft").replace(/[^a-zA-Z0-9]+/g, "-");
+      const fileName = `Requisition-${safeName}-${safeDate}.pdf`;
+      pdf.save(fileName);
+      toast({ title: "PDF Downloaded", description: fileName });
+    } catch {
+      toast({ title: "PDF Failed", description: "Could not generate the PDF file", variant: "destructive" });
+    } finally {
+      setPdfGeneratingId(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       Draft:      "bg-yellow-100  text-yellow-800  border-yellow-300",
@@ -956,6 +1036,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
   const filteredRequisitions = requisitions.filter((r) =>
     r.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -1092,6 +1173,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                     <tr className="border-b bg-slate-50">
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">SL</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Date</th>
+                      <th className="text-left p-3 text-xs font-semibold text-slate-600">Branch Name</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Applicant</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Employee ID</th>
                       <th className="text-left p-3 text-xs font-semibold text-slate-600">Category</th>
@@ -1105,6 +1187,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                       <tr key={req.id} className="border-b hover:bg-slate-50 transition-colors">
                         <td className="p-3 text-sm">{idx + 1}</td>
                         <td className="p-3 text-sm">{req.date}</td>
+                        <td className="p-3 text-sm">{req.branchName}</td>
                         <td className="p-3 text-sm font-medium">{req.applicantName}</td>
                         <td className="p-3 text-sm font-mono">{req.employeeId}</td>
                         <td className="p-3 text-sm">{req.category}</td>
@@ -1133,6 +1216,9 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handleView(req)} title="View" className="h-8 w-8 p-0"><FileText className="w-4 h-4 text-slate-600" /></Button>
                             <Button variant="ghost" size="sm" onClick={() => openPrintWindow(req)} title="Print" className="h-8 w-8 p-0"><Printer className="w-4 h-4 text-indigo-600" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => downloadPdf(req)} disabled={!!pdfGeneratingId} title="Download PDF" className="h-8 w-8 p-0">
+                              {pdfGeneratingId === req.id ? <Loader2 className="w-4 h-4 text-purple-600 animate-spin" /> : <FileDown className="w-4 h-4 text-purple-600" />}
+                            </Button>
                             {(authUser.role === "Admin" || req.status === "Draft") && (
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(req)} title="Edit" className="h-8 w-8 p-0"><Edit3 className="w-4 h-4 text-blue-600" /></Button>
                             )}
