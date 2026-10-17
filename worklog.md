@@ -351,3 +351,17 @@ Stage Summary:
 - List columns: SL, Date, Branch Name, Address, Applicant, Employee ID, Total Amount, Status, Actions
 - Category hidden from list but still stored and visible in form/print/PDF
 - Search box now matches ANY field including equipment names and status
+
+---
+Task ID: 23
+Agent: Main Agent
+Task: PDF "To," field spacing = 0.25 inch
+
+Work Log:
+- Changed print HTML "To," field margin-top from 12px to 0.25in (24px @96dpi)
+  in generatePrintHTML — affects both Print window and Download PDF (same layout)
+- E2E verified: downloaded PDF locally, visually confirmed larger gap above "To,"
+- Build passed, committed eb98751, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- PDF/Print layout now has exact 0.25 inch space above the "To," line
