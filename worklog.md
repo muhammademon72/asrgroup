@@ -329,3 +329,25 @@ Stage Summary:
 - All 7 fields are now mandatory with visible red asterisks
 - Save blocked with clear per-field error toasts until all requirements met
 - Equipment selection (at least 1 item) now required before saving
+
+---
+Task ID: 22
+Agent: Main Agent
+Task: Requisition List — Address column, hide Category, all-field search
+
+Work Log:
+- Added "Address" column right after Branch Name (shows req.applicantAddress, slate-600)
+- Removed Category column (header + cell) — hidden per user request (data still saved/printed)
+- Rewrote filteredRequisitions as all-field search (lowercased query q computed once):
+  name, employeeId, branch, applicantDepartment, applicantAddress, contact,
+  organizationName, date, category, status, reason, totalAmount (string match),
+  id, and nested items (equipmentName + description)
+- Updated search placeholder: "Search all: name, ID, branch, address, contact, status, equipment..."
+- E2E verified with agent-browser: columns SL/Date/Branch/Address/Applicant/EmpID/Amount/Status/Actions ✓;
+  search "elephant"→1 row (address), "processor"→1 (equipment), "draft"→1 (status), garbage→0 ✓
+- Build passed, committed 711d065, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- List columns: SL, Date, Branch Name, Address, Applicant, Employee ID, Total Amount, Status, Actions
+- Category hidden from list but still stored and visible in form/print/PDF
+- Search box now matches ANY field including equipment names and status
