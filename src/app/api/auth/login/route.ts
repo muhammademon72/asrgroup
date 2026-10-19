@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Wrong email! No account found with this email." }, { status: 401 });
     }
 
     if (user.status !== "Active") {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const inputHashed = simpleHash(password);
 
     if (hashedPassword !== inputHashed && user.password !== password) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Wrong password! Please try again." }, { status: 401 });
     }
 
     // Return user info (without password)

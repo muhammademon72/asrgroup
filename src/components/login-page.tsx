@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { Loader2, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,6 +66,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Dropdown options loaded from DB (admin-managed via Department / Branch tabs)
   const [branchOptions, setBranchOptions] = useState<string[]>(DEFAULT_BRANCHES);
@@ -93,8 +94,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!email.trim() || !password.trim()) {
-      toast({ title: "Validation", description: "Please enter email and password", variant: "destructive" });
+      const msg = "Please enter email and password";
+      setError(msg);
+      toast({ title: "Validation", description: msg, variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -106,29 +110,41 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Login Failed", description: data.error || "Invalid credentials", variant: "destructive" });
+        const msg = data.error || "Wrong email or password! Please try again.";
+        setError(msg);
+        toast({ title: "Login Failed", description: msg, variant: "destructive" });
         return;
       }
       toast({ title: "Welcome!", description: `Logged in as ${data.user.name}` });
       onLogin(data.user);
     } catch {
-      toast({ title: "Error", description: "Connection failed. Please try again.", variant: "destructive" });
+      const msg = "Connection failed. Please try again.";
+      setError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!name.trim() || !branch.trim() || !department.trim() || !employeeId.trim() || !email.trim() || !password.trim()) {
-      toast({ title: "Validation", description: "All fields are required", variant: "destructive" });
+      const msg = "All fields are required";
+      setError(msg);
+      toast({ title: "Validation", description: msg, variant: "destructive" });
       return;
     }
     if (password.length < 4) {
-      toast({ title: "Validation", description: "Password must be at least 4 characters", variant: "destructive" });
+      const msg = "Password must be at least 4 characters";
+      setError(msg);
+      toast({ title: "Validation", description: msg, variant: "destructive" });
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: "Validation", description: "Passwords do not match", variant: "destructive" });
+      const msg = "Passwords do not match";
+      setError(msg);
+      toast({ title: "Validation", description: msg, variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -140,7 +156,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Sign Up Failed", description: data.error || "Could not create account", variant: "destructive" });
+        const msg = data.error || "Could not create account";
+        setError(msg);
+        toast({ title: "Sign Up Failed", description: msg, variant: "destructive" });
         return;
       }
       toast({ title: "Account Created!", description: "You can now sign in with your credentials" });
@@ -152,9 +170,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       setPassword("");
       setConfirmPassword("");
     } catch {
-      toast({ title: "Error", description: "Connection failed. Please try again.", variant: "destructive" });
+      const msg = "Connection failed. Please try again.";
+      setError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const switchMode = () => {
@@ -166,6 +187,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
+    setError("");
   };
 
   return (
@@ -187,12 +209,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Email Address</label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@asrgroup.com" className="h-10" autoComplete="email" autoFocus />
+                    <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="admin@asrgroup.com" className="h-10" autoComplete="email" autoFocus />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-600 mb-1.5 block">Password</label>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" className="h-10 pr-10" autoComplete="current-password" />
+                      <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="Enter password" className="h-10 pr-10" autoComplete="current-password" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -202,6 +224,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
+                  {error && (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5" role="alert">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <p className="text-sm font-medium text-red-700">{error}</p>
+                    </div>
+                  )}
                 </form>
 
                 {/* Switch to Sign Up */}
@@ -271,6 +299,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                     {loading ? "Creating account..." : "Sign Up"}
                   </Button>
+                  {error && (
+                    <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5" role="alert">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <p className="text-sm font-medium text-red-700">{error}</p>
+                    </div>
+                  )}
                 </form>
 
                 {/* Switch to Sign In */}
