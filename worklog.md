@@ -381,3 +381,30 @@ Work Log:
 
 Stage Summary:
 - Downloaded PDF now starts with exact 0.25 inch white space above the form box
+
+---
+Task ID: 25
+Agent: Main Agent
+Task: Login page — wrong credentials caused infinite loading; user wants clear "wrong" messages
+
+Work Log:
+- Root cause: handleLogin/handleSignUp early-returned on !res.ok BEFORE setLoading(false)
+  → button stuck on "Signing in..." spinner forever after wrong credentials
+- Fixed both handlers: setLoading(false) moved into finally block (always runs)
+- Added persistent inline red error box (role=alert, AlertCircle icon) below submit button
+  in both login and signup forms — stays visible (toast auto-dismisses in ~2s)
+- Error auto-clears when user types in email/password or switches mode
+- Login API messages made specific:
+  - user not found → "Wrong email! No account found with this email." (401)
+  - password mismatch → "Wrong password! Please try again." (401)
+- E2E verified with agent-browser (all in single command, server dies between tool calls):
+  - wrong password → alert "Wrong password! Please try again.", button back to "Sign In" ✓
+  - typing clears error (alert null after input change) ✓
+  - wrong email → "Wrong email! No account found with this email." ✓
+  - correct login → app loads, no alert ✓ (screenshot: scripts/test-login-error.png)
+- Build passed, committed a6c71dd, pushed to origin main (Vercel auto-deploy)
+
+Stage Summary:
+- Wrong email/password no longer freezes the page — spinner stops immediately
+- Clear red error message box shown on the form for wrong user and wrong password
+- Note: sandbox kills background processes between Bash calls — run E2E as one chained command
