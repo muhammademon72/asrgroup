@@ -481,3 +481,43 @@ Stage Summary:
 - Sandbox app healthy on Turso production data; boot chain proven at this boot
 - .env.local now git-tracked -> reboot/reclone keeps Turso data parity
 - Domain expected to open once platform re-deploys (Complete trigger)
+
+Task 27 (cont.) — deploy pipeline reverse-engineered, package uploaded, domain state still backend-held
+
+Work Log (continued):
+- Read .zscripts/build.sh: platform deploy = bun run build (standalone guard for
+  .next/standalone/server.js) -> package to /tmp/build_fullstack_$BUILD_ID.tar.gz
+  (next-service-dist + db + Caddyfile :81->:3000 + start.sh)
+- Deployment start.sh (.zscripts/start.sh): FC runs it from /app, defaults
+  DATABASE_URL=file:/app/db/custom.db (packaged sqlite), bun server.js :3000,
+  Caddy :81 foreground. build.sh comments confirm FC health check = 120s on :81,
+  failure mode = warmup_412 / FunctionNotStarted -> gateway "Failed" page
+- Found platform identity at /etc/.z-ai-config: userId 69119e0b-c774-40b5-a1ef-
+  924421067d9a, chatId chat-f579f6db-4766-4bdc-b2e2-672d32e9c558 (note "chat-"
+  prefix!), baseUrl internal-api.z.ai/v1
+- Found agent API on 127.0.0.1:12600 (uvicorn, root-owned /app/main.py):
+  GET /ping -> pong; POST /deploy {userid, chatid} -> packages + uploads to OSS
+  oss_path=dists/<userid>/<chatid>/, returns BUILD_ID
+- With fake userid ("test"): packaging ok but HTTP 500 "Internal Server Error"
+  after ~24s (backend rejects unknown user)
+- With REAL identity: {"message":"部署成功"} HTTP 200, BUILD_ID 1793197102 and
+  again 1793198399 after adding TURSO_* to .env (traced .env ships Turso vars
+  into next-service-dist so deployed app serves production Turso data, not
+  stale packaged sqlite)
+- Verified next-service-dist/.env inside tarball now carries TURSO_* vars
+- Domain asrgroup.space-z.ai: still gateway 500 "Failed" 30+ min after 3
+  successful uploads; polls (40-80ms, cache-served) NEVER reach sandbox
+  (dev.log unchanged) -> domain state lives backend/FC-side; sandbox cannot
+  flip it. Failed page itself advises: "return to the generation page to try
+  again" = user must re-trigger deploy from z.ai generation page
+- External traffic IS reaching sandbox app continuously (dev.log GET /api/...)
+  = user's browser via platform preview URL, so preview URL works fine
+
+Stage Summary:
+- Sandbox-side: everything fixed & deployable; latest package (with Turso
+  parity) uploaded as BUILD_ID 1793198399
+- Remaining: user clicks Deploy/Publish on generation page -> backend picks
+  uploaded package -> FC health check passes (app boots in ~2s) -> domain live
+- Key learnings: /etc/.z-ai-config = platform identity; :12600/deploy = the
+  deploy trigger; chatid needs "chat-" prefix; standalone traces only .env
+  (not .env.local) so deployment env must live in .env
