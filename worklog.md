@@ -693,3 +693,35 @@ Stage Summary:
 - The three required dropdowns now start empty (placeholder shown) and validation
   forces the user to pick one before saving
 - Save is blocked with a clear toast until all three are selected
+
+---
+Task ID: 32
+Agent: Main Agent
+Task: Make "PLEASE WRITE A REASON" box required in Requisition form
+
+Work Log:
+- User asked: "PLEASE WRITE A REASON : ei box ta ke Require kore dao"
+- Found the box at src/app/page.tsx line 1541 — a <Textarea> bound to
+  currentRequisition.reason. Was optional (no validation, no asterisk on label).
+- Changes:
+  1. Label updated from "PLEASE WRITE A REASON :" to
+     "PLEASE WRITE A REASON * :" (added red asterisk to signal required)
+  2. Added validation in handleSave() after the equipment-item check:
+     if (!currentRequisition.reason.trim()) {
+       toast "Validation Error — Please write a reason for this requisition"
+       return;
+     }
+- E2E verified via agent-browser:
+  - Opened New Requisition form, confirmed label now shows red asterisk
+  - Filled all other required fields (name, dept, employee ID, branch, address,
+    contact, selected 1 equipment item with qty=1), left reason empty
+  - Clicked Save -> toast: "Validation Error — Please write a reason for this
+    requisition" (form NOT saved)
+  - Typed reason "Testing reason field for new equipment requisition", clicked Save
+  - Toast: "Saved Successfully — Requisition has been saved"
+  - Verified reason was persisted to DB, then deleted the test entry
+- Committed + pushed
+
+Stage Summary:
+- The "PLEASE WRITE A REASON" textarea is now mandatory — red asterisk on label
+  + validation blocks save with a clear toast until user writes something
