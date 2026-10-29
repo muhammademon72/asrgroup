@@ -735,6 +735,10 @@ export default function EquipmentRequisitionSystem() {
       toast({ title: "Validation Error", description: "Please select at least one equipment item (Select * column)", variant: "destructive" });
       return;
     }
+    if (!currentRequisition.reason.trim()) {
+      toast({ title: "Validation Error", description: "Please write a reason for this requisition", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       const url = editId ? `/api/requisitions/${editId}` : "/api/requisitions";
@@ -1538,7 +1542,7 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
 
             {/* Reason */}
             <div className="mb-8">
-              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON :</h3>
+              <h3 className="text-sm font-bold text-slate-700 mb-2">PLEASE WRITE A REASON <span className="text-red-500">*</span> :</h3>
               {isEditing ? (
                 <Textarea value={currentRequisition.reason} onChange={(e) => setCurrentRequisition({ ...currentRequisition, reason: e.target.value })} className="min-h-[80px]" placeholder="Write your reason here..." />
               ) : (

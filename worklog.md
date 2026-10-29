@@ -751,3 +751,26 @@ Work Log:
 Stage Summary:
 - Reason field is now optional again; users can save a requisition without
   writing anything in the reason box
+
+---
+Task ID: 34
+Agent: Main Agent
+Task: Revert — make "PLEASE WRITE A REASON" required again
+
+Work Log:
+- User asked to go "back to Previous" — meaning restore the required state
+  (Task 32) after the optional revert (Task 33)
+- Re-applied both changes from Task 32:
+  1. Re-added the reason validation in handleSave():
+     if (!currentRequisition.reason.trim()) {
+       toast "Validation Error — Please write a reason for this requisition"
+       return;
+     }
+  2. Re-added the red asterisk to the label:
+     "PLEASE WRITE A REASON * :"
+- Verified compile passes (HTTP 200)
+- Committed + pushed
+
+Stage Summary:
+- Reason field is required again — label shows red asterisk and Save is blocked
+  with a clear toast until the user writes something
