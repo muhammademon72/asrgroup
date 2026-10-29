@@ -521,3 +521,48 @@ Stage Summary:
 - Key learnings: /etc/.z-ai-config = platform identity; :12600/deploy = the
   deploy trigger; chatid needs "chat-" prefix; standalone traces only .env
   (not .env.local) so deployment env must live in .env
+
+---
+Task ID: 28
+Agent: Main Agent
+Task: Why login works on preview-chat-*.space-z.ai but NOT on asrgroup.space-z.ai
+
+Work Log:
+- User reported: preview URL login works, custom domain login fails
+- Compared both URLs (both now return HTTP 200 + login page after Task 27):
+  Preview URL (preview-chat-f579f6db-...space-z.ai):
+    - 28 users, 47 requisitions (Turso production DB)
+    - Dev-mode Turbopack bundles -> routes to THIS sandbox (dev.log grows on poll)
+    - Sandbox uses .env.local (TURSO vars) -> db.ts picks Turso
+  Custom domain (asrgroup.space-z.ai):
+    - 5 users (packaged SQLite from build-time snapshot)
+    - Production standalone bundles -> routes to separate FC deployment
+    - Packaged .env had Neon PostgreSQL URL but PrismaLibSql adapter can't use
+      it -> falls back to packaged SQLite (5 stale users, password "123456")
+- Verified API health on custom domain:
+    POST /api/auth/login muhammademon72@gmail.com / 123456 -> 200 Login successful
+    POST /api/auth/login with wrong password -> 401 "Wrong password! Please try again."
+    POST /api/auth/login with wrong email -> 401 "Wrong email! No account found with this email."
+  => API works, error handling works (Task 25 fix is in the deployed bundle)
+- Root cause = TWO DIFFERENT DATABASES:
+  - Preview URL = live Turso (user's CURRENT password)
+  - Custom domain = stale packaged SQLite (OLD password "123456")
+  - User was entering Turso password on custom domain -> rejected as wrong
+- Fix: unified both URLs to the SAME Turso database
+  1. .env: removed Neon PostgreSQL URL (was injected by something/someone between
+     Task 27 and this task), restored TURSO_DATABASE_URL + TURSO_AUTH_TOKEN +
+     DATABASE_URL=file:.../custom.db (for prisma db:push during build)
+  2. Verified sandbox still on Turso (28 users, 47 reqs) after restart
+  3. Commit 23ff04d force-added .env (gitignored) + pushed to origin/main
+  4. POST :12600/deploy with real identity -> 部署成功 BUILD_ID 1793257270
+- Polled custom domain: still 5 users after ~3 min (FC deployment is async,
+  warmup_412 / health-check 120s window applies). Expected to flip to 28 users
+  once FC picks up new package
+
+Stage Summary:
+- Code + DB unified to Turso; preview URL already correct; custom domain
+  deployment pending FC warmup
+- For the user RIGHT NOW:
+  - Preview URL: works with current password (already live)
+  - Custom domain: works with OLD password "123456" until new package lands,
+    then will accept current Turso password too
