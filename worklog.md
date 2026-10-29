@@ -653,3 +653,43 @@ Stage Summary:
   preview, confirm) buttons before Add New User
 - All imported users save directly to Turso (same DB, no sync needed)
 - Import is safe: existing emails are skipped, not overwritten
+
+---
+Task ID: 31
+Agent: Main Agent
+Task: Applicant Department / Branch Name / Address must have NO default selection but be required
+
+Work Log:
+- User asked: "Applicant Department * / Branch Name * / Address * — Ei Tin ta Default Select Thakbe na tobe Select Require Thakbe"
+- Read src/app/page.tsx to find:
+  1. Line 124: dropdownDefaults had hardcoded defaults (Information Technology /
+     Head Office / Elephant Road)
+  2. Lines 656-672: fetchDropdownDefaults() was AUTO-OVERRIDING dropdownDefaults
+     with the FIRST option from DB when the current default didn't match — so even
+     after I cleared the hardcoded defaults, the function re-populated them on mount
+  3. Lines 730-744: validation in handleSave already checked .trim() on all three
+     fields — but never triggered because defaults were never empty
+- Fixes:
+  1. Set dropdownDefaults = { department: "", branch: "", address: "" }
+  2. Stripped the auto-override logic from fetchDropdownDefaults — now it only
+     warms the fetch cache; DropdownWithManage components fetch their own options
+- E2E verified via agent-browser (logged in as admin):
+  - Opened New Requisition form
+  - Confirmed all 3 dropdowns show placeholders: "Select Department...",
+    "Select Branch...", "Select Address..." (no default value)
+  - Filled required text fields (name, employee ID, contact), selected one
+    equipment item with qty=1, then clicked Save WITHOUT touching dropdowns
+  - Got toast: "Validation Error — Applicant Department is required"
+  - Selected Accounts -> Save -> "Branch Name is required"
+  - Selected Anchor Enterprise -> Save -> "Address is required"
+  - Selected Elephant Road -> Save -> "Saved Successfully"
+  - Verified in DB: applicantDepartment='Accounts', branchName='Anchor Enterprise',
+    applicantAddress='Elephant Road' (all three populated, none empty)
+  - Cleaned up test entry
+- Screenshot saved: download/requisition-empty-dropdowns.png
+- Committed + pushed
+
+Stage Summary:
+- The three required dropdowns now start empty (placeholder shown) and validation
+  forces the user to pick one before saving
+- Save is blocked with a clear toast until all three are selected

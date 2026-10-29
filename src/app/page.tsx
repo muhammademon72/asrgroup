@@ -120,8 +120,10 @@ const getDefaultItems = (): RequisitionItem[] => {
   return items;
 };
 
-// Dropdown defaults — will be fetched from DB at runtime
-const dropdownDefaults = { department: "Information Technology", branch: "Head Office", address: "Elephant Road" };
+// Dropdown defaults — will be fetched from DB at runtime.
+// NOTE: department / branch / address intentionally left blank so the user
+// is forced to pick one. Validation in handleSave rejects empty selections.
+const dropdownDefaults = { department: "", branch: "", address: "" };
 
 // Format bytes to human-readable string (GB / MB / TB)
 const formatBytes = (bytes: number): string => {
@@ -642,35 +644,19 @@ export default function EquipmentRequisitionSystem() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Fetch dropdown defaults from DB on mount so new requisitions use DB values
-  // Only override hardcoded defaults if they no longer exist in the DB options
+  // Fetch dropdown options from DB on mount.
+  // NOTE: we no longer auto-pick a default — the three dropdowns
+  // (applicantDepartment / branchName / applicantAddress) MUST stay empty
+  // so the user is forced to select one. Validation in handleSave enforces this.
   const fetchDropdownDefaults = useCallback(async () => {
     try {
-      const [deptRes, branchRes, addrRes] = await Promise.all([
+      await Promise.all([
         fetch("/api/dropdown-options?type=department"),
         fetch("/api/dropdown-options?type=branch"),
         fetch("/api/dropdown-options?type=address"),
       ]);
-      if (deptRes.ok) {
-        const depts: DropdownOption[] = await deptRes.json();
-        // Only override if the hardcoded default is no longer in the DB
-        if (depts.length > 0 && !depts.some(d => d.value === dropdownDefaults.department)) {
-          dropdownDefaults.department = depts[0].value;
-        }
-      }
-      if (branchRes.ok) {
-        const branches: DropdownOption[] = await branchRes.json();
-        if (branches.length > 0 && !branches.some(b => b.value === dropdownDefaults.branch)) {
-          dropdownDefaults.branch = branches[0].value;
-        }
-      }
-      if (addrRes.ok) {
-        const addrs: DropdownOption[] = await addrRes.json();
-        if (addrs.length > 0 && !addrs.some(a => a.value === dropdownDefaults.address)) {
-          dropdownDefaults.address = addrs[0].value;
-        }
-      }
-    } catch { /* ignore — hardcoded defaults will be used */ }
+      // DropdownWithManage components fetch their own options; nothing to do here.
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => { fetchDropdownDefaults(); }, [fetchDropdownDefaults]);
