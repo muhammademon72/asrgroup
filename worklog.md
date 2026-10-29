@@ -566,3 +566,47 @@ Stage Summary:
   - Preview URL: works with current password (already live)
   - Custom domain: works with OLD password "123456" until new package lands,
     then will accept current Turso password too
+
+---
+Task ID: 29
+Agent: Main Agent
+Task: Why asrgroup.space-z.ai still shows stale SQLite data (5 users) instead of Turso (28 users)
+
+Work Log:
+- User asked: "ei address diye ki data pabo na?" (will I get [Turso] data on this address?)
+- Diagnosed custom domain state:
+  - Users: 5, Requisitions: 1, dbSize: 45KB (packaged SQLite from build-time)
+  - Login with Turso password -> 401 Wrong password (because the 5 users have OLD passwords)
+  - Login with old password "123456" -> 200 success (confirms stale SQLite, not Turso)
+- Sandbox (preview URL) still serves Turso: 28 users, 48 requisitions, 717 items
+- Local production build test (NODE_ENV=production node .next/standalone/server.js):
+  - Confirmed Next.js standalone does NOT auto-load .env files (only next dev does)
+  - This is why FC's deployed app falls back to packaged SQLite — TURSO_* vars are
+    never set in process.env at runtime
+- Fix delivered:
+  1. Added src/instrumentation.ts using dotenv to explicitly load .env and .env.local
+     at server startup (Next.js official pattern, runs once before any route)
+  2. Installed dotenv package (^18.0.9)
+  3. Local production test verified: log shows "[instrumentation] env loaded — TURSO: true",
+     API returns 28 users (Turso data)
+  4. Committed 283b03e, pushed to origin main
+- Triggered 4 fresh deploys via POST :12600/deploy with real identity:
+  BUILD_ID 1793259055, 1793259354, 1793259546, 1793260059 — all returned 部署成功
+- Verified latest package contents:
+  - next-service-dist/.env contains TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
+  - .next/server/instrumentation.js is bundled (register() will run)
+  - 3 chunk files reference TURSO_DATABASE_URL
+- Polled asrgroup.space-z.ai/api/users every 25s for 10+ min after each deploy:
+  STILL 5 users — FC (Alibaba Function Compute) is NOT picking up the new package
+- Hypothesis: FC deployment state is "sticky" — same as Task 27's gateway-500
+  syndrome. The /deploy endpoint uploads to OSS, but FC's provisioner doesn't
+  re-pull/restart the function automatically. User must trigger deploy from
+  z.ai generation page to force FC to re-provision with the new package.
+
+Stage Summary:
+- Code fix complete and verified locally — when FC picks up the package, both
+  URLs will serve the same Turso data with the same password
+- User action required: trigger Deploy/Publish on z.ai generation page to make
+  FC re-provision with the new (Turso-enabled) package
+- For now: preview URL works with Turso data + current password; custom domain
+  works only with OLD password "123456" until FC re-provisions
