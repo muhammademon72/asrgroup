@@ -610,3 +610,46 @@ Stage Summary:
   FC re-provision with the new (Turso-enabled) package
 - For now: preview URL works with Turso data + current password; custom domain
   works only with OLD password "123456" until FC re-provisions
+
+---
+Task ID: 30
+Agent: Main Agent
+Task: Add Export & Import (JSON) options before "Add New User" button in Admin Panel
+
+Work Log:
+- User asked: "Admin Panel er ekhane Add New User er age Export & Import option add koro json format diye"
+- Read src/components/user-management.tsx to understand existing structure
+- Read src/app/api/users/route.ts to confirm POST endpoint accepts the fields we need
+- Added to src/components/user-management.tsx:
+  1. Import Download + Upload icons from lucide-react, useRef from react
+  2. New state: importing, importDialogOpen, importPreview, fileInputRef
+  3. handleExport(): fetches /api/users, strips server-only fields (id, createdAt,
+     updatedAt), wraps in {exportedAt, app, count, users} envelope, downloads as
+     asr-users-YYYY-MM-DD.json via Blob + a.download trick
+  4. handleImportFile(): reads JSON file, accepts either {users:[...]} envelope
+     OR raw array, normalizes each entry to User shape (defaults password="123456",
+     role="User", status="Active"), validates name+email required, opens preview
+     dialog
+  5. handleConfirmImport(): iterates preview list, POSTs each to /api/users,
+     counts created/skipped(existing email)/failed, shows summary toast, refreshes list
+  6. Two new outline buttons (Export with Download icon, Import with Upload icon)
+     placed BEFORE "Add New User" button in the action row
+  7. Hidden <input type=file accept=.json> wired via ref + click handler
+  8. Import preview Dialog (max-w-2xl) with scrollable table: SL/Name/Email/Dept/Role,
+     Cancel + Confirm Import buttons, import-in-progress spinner
+- E2E verified via agent-browser:
+  - Logged in as admin (muhammademon72@gmail.com / foskq6)
+  - Opened Admin Panel -> confirmed Export, Import, Add New User buttons visible in order
+  - Screenshot saved: download/admin-panel-with-export-import.png
+  - Export test: clicked Export -> toast "Export Complete 28 user(s) exported to JSON."
+  - Import test: uploaded test JSON with 2 users via DataTransfer -> preview dialog
+    showed both rows -> clicked Confirm Import -> toast "Import Complete Created: 2 ·
+    Skipped: 0 · Failed: 0" -> verified in /api/users (28 -> 30)
+  - Cleanup: deleted both test users (back to 28)
+- Committed + pushed
+
+Stage Summary:
+- Admin Panel now has Export (download all users as JSON) and Import (upload JSON,
+  preview, confirm) buttons before Add New User
+- All imported users save directly to Turso (same DB, no sync needed)
+- Import is safe: existing emails are skipped, not overwritten

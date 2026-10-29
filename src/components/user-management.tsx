@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Search,
@@ -9,6 +9,8 @@ import {
   Loader2,
   Users,
   X,
+  Download,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +129,169 @@ export default function UserManagement() {
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Export / Import
+  const [importing, setImporting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<User[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    try {
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const allUsers: User[] = await res.json();
+      // Strip server-generated fields; keep only editable user data
+      const exportData = allUsers.map((u) => ({
+        name: u.name,
+        email: u.email,
+        password: u.password || "123456",
+        phone: u.phone || "",
+        employeeId: u.employeeId || "",
+        department: u.department || "",
+        branch: u.branch || "",
+        role: u.role || "User",
+        status: u.status || "Active",
+      }));
+      const json = JSON.stringify(
+        {
+          exportedAt: new Date().toISOString(),
+          app: "ASR GROUP — Equipment Requisition System",
+          count: exportData.length,
+          users: exportData,
+        },
+        null,
+        2
+      );
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `asr-users-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export Complete",
+        description: `${exportData.length} user(s) exported to JSON.`,
+      });
+    } catch {
+      toast({
+        title: "Export Failed",
+        description: "Could not export users.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      // Accept either { users: [...] } or a raw array
+      const list: User[] = Array.isArray(parsed) ? parsed : parsed.users;
+      if (!Array.isArray(list) || list.length === 0) {
+        toast({
+          title: "Import Failed",
+          description: "JSON does not contain a valid users array.",
+          variant: "destructive",
+        });
+        e.target.value = "";
+        return;
+      }
+      // Normalize each entry to a valid User shape
+      const normalized = list.map((u) => ({
+        id: "",
+        name: (u.name || "").toString().trim(),
+        email: (u.email || "").toString().trim(),
+        password: u.password || "123456",
+        phone: u.phone || "",
+        employeeId: u.employeeId || "",
+        department: u.department || "",
+        branch: u.branch || "",
+        role: u.role || "User",
+        status: u.status || "Active",
+        createdAt: "",
+        updatedAt: "",
+      }));
+      // Basic validation
+      const invalid = normalized.filter((u) => !u.name || !u.email);
+      if (invalid.length > 0) {
+        toast({
+          title: "Import Failed",
+          description: `${invalid.length} row(s) missing required name/email.`,
+          variant: "destructive",
+        });
+        e.target.value = "";
+        return;
+      }
+      setImportPreview(normalized);
+      setImportDialogOpen(true);
+    } catch {
+      toast({
+        title: "Import Failed",
+        description: "Could not parse JSON file.",
+        variant: "destructive",
+      });
+    }
+    e.target.value = "";
+  };
+
+  const handleConfirmImport = async () => {
+    if (importPreview.length === 0) return;
+    setImporting(true);
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+    try {
+      for (const u of importPreview) {
+        try {
+          const res = await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: u.name,
+              email: u.email,
+              password: u.password,
+              phone: u.phone,
+              employeeId: u.employeeId,
+              department: u.department,
+              branch: u.branch,
+              role: u.role,
+              status: u.status,
+            }),
+          });
+          if (res.ok) {
+            created += 1;
+          } else if (res.status === 500) {
+            // Most likely unique constraint on email
+            skipped += 1;
+          } else {
+            failed += 1;
+          }
+        } catch {
+          failed += 1;
+        }
+      }
+      toast({
+        title: "Import Complete",
+        description: `Created: ${created} · Skipped (existing): ${skipped} · Failed: ${failed}`,
+      });
+      setImportDialogOpen(false);
+      setImportPreview([]);
+      fetchUsers();
+    } catch {
+      toast({
+        title: "Import Error",
+        description: "Unexpected error during import.",
+        variant: "destructive",
+      });
+    }
+    setImporting(false);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -411,9 +576,34 @@ export default function UserManagement() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
-          <Plus className="w-4 h-4" /> Add New User
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleExport}
+            variant="outline"
+            className="gap-2 border-slate-300 hover:bg-slate-50"
+            title="Download all users as JSON"
+          >
+            <Download className="w-4 h-4" /> Export
+          </Button>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="gap-2 border-slate-300 hover:bg-slate-50"
+            title="Import users from a JSON file"
+          >
+            <Upload className="w-4 h-4" /> Import
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
+            <Plus className="w-4 h-4" /> Add New User
+          </Button>
+        </div>
       </div>
 
       <span className="text-sm text-slate-500">{users.length} registered user(s)</span>
@@ -478,6 +668,63 @@ export default function UserManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importDialogOpen} onOpenChange={(o) => { if (!importing) setImportDialogOpen(o); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Users</DialogTitle>
+            <DialogDescription>
+              Review the users below. Click <strong>Confirm Import</strong> to add them. Existing emails will be skipped.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[50vh] overflow-y-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr className="border-b">
+                  <th className="text-left p-2 font-semibold text-slate-600">SL</th>
+                  <th className="text-left p-2 font-semibold text-slate-600">Name</th>
+                  <th className="text-left p-2 font-semibold text-slate-600">Email</th>
+                  <th className="text-left p-2 font-semibold text-slate-600">Dept</th>
+                  <th className="text-left p-2 font-semibold text-slate-600">Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.map((u, i) => (
+                  <tr key={i} className="border-b hover:bg-slate-50">
+                    <td className="p-2 text-slate-600">{i + 1}</td>
+                    <td className="p-2 font-medium text-slate-800">{u.name}</td>
+                    <td className="p-2 text-slate-600">{u.email}</td>
+                    <td className="p-2 text-slate-600">{u.department || "—"}</td>
+                    <td className="p-2 text-slate-600">{u.role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-600">
+              Total: <strong>{importPreview.length}</strong> user(s)
+            </span>
+            {importing && (
+              <span className="flex items-center gap-2 text-slate-500">
+                <Loader2 className="w-4 h-4 animate-spin" /> Importing...
+              </span>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setImportDialogOpen(false); setImportPreview([]); }} disabled={importing}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmImport} disabled={importing} className="bg-slate-800 hover:bg-slate-700 gap-2">
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Confirm Import
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
