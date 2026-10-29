@@ -725,3 +725,29 @@ Work Log:
 Stage Summary:
 - The "PLEASE WRITE A REASON" textarea is now mandatory — red asterisk on label
   + validation blocks save with a clear toast until user writes something
+
+---
+Task ID: 33
+Agent: Main Agent
+Task: Remove "Please write a reason" validation from Requisition form
+
+Work Log:
+- User reported (with screenshot): validation error "Please write a reason for
+  this requisition" was showing even though they had filled the field; asked to
+  remove the validation message
+- Reverted the changes made in Task 32:
+  1. Removed the reason validation block from handleSave() — the
+     `if (!currentRequisition.reason.trim()) { toast(...); return; }` is gone,
+     so reason is now optional again
+  2. Removed the red asterisk from the label — back to "PLEASE WRITE A REASON :"
+- E2E verified via agent-browser:
+  - Filled all required fields (name, dept, employee ID, branch, address, contact,
+    selected 1 equipment item with qty=1), LEFT reason empty
+  - Clicked Save -> toast: "Saved Successfully — Requisition has been saved"
+  - Confirmed no validation error appeared
+  - Cleaned up the test entry
+- Committed + pushed
+
+Stage Summary:
+- Reason field is now optional again; users can save a requisition without
+  writing anything in the reason box
