@@ -24,6 +24,9 @@ import {
   MapPin,
   Network,
   Database,
+  Download,
+  Upload,
+  FileJson,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -56,6 +59,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import UserManagement from "@/components/user-management";
+import DataManagement from "@/components/data-management";
 import LoginPage from "@/components/login-page";
 
 // Types
@@ -623,7 +627,7 @@ export default function EquipmentRequisitionSystem() {
     }
   }, [authUser]);
 
-  const [mainTab, setMainTab] = useState<"requisition" | "users" | "department" | "branch" | "address">("requisition");
+  const [mainTab, setMainTab] = useState<"requisition" | "users" | "department" | "branch" | "address" | "data">("requisition");
   const [view, setView] = useState<"list" | "form">("list");
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [currentRequisition, setCurrentRequisition] = useState<Requisition>(createEmptyRequisition());
@@ -1128,6 +1132,14 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
                     Admin Panel
                   </button>
                 )}
+                {authUser.role === "Admin" && (
+                  <button
+                    onClick={() => setMainTab("data")}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${mainTab === "data" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    <FileJson className="w-3.5 h-3.5" /> Data
+                  </button>
+                )}
               </div>
               {mainTab === "requisition" && (
                 <Button onClick={handleNew} className="bg-slate-800 hover:bg-slate-700 gap-2">
@@ -1160,6 +1172,8 @@ ${req.items.map((item) => `<tr${item.selected ? ' style="font-weight:bold"' : ''
             <DropdownManagement type="branch" label="Branch" icon={<Building2 className="w-5 h-5" />} />
           ) : mainTab === "address" ? (
             <DropdownManagement type="address" label="Address" icon={<MapPin className="w-5 h-5" />} />
+          ) : mainTab === "data" ? (
+            <DataManagement />
           ) : (
           <>
           <div className="flex items-center gap-3 mb-4 flex-wrap">

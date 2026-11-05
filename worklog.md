@@ -774,3 +774,42 @@ Work Log:
 Stage Summary:
 - Reason field is required again — label shows red asterisk and Save is blocked
   with a clear toast until the user writes something
+
+---
+Task ID: 35
+Agent: Main Agent
+Task: Add Export & Import (JSON) for ALL app data — Requisitions, Users, Dropdown Options
+
+Work Log:
+- User asked: "ei apps er all export and import option koro json format koro"
+- Created new component src/components/data-management.tsx with:
+  1. "All Data (Full Backup)" section — Export All + Import All buttons that bundle
+     requisitions + users + dropdown options into a single JSON file
+  2. Three individual sections — Requisitions, Users, Dropdown Options — each with
+     their own Export and Import buttons for granular control
+  3. Import flow: file picker -> parse JSON (accepts {requisitions:[...]},
+     {users:[...]}, {options:[...]} OR full bundle OR raw array) -> preview dialog
+     showing first 50 rows of each section -> Confirm Import button
+  4. Import is additive: existing records (same email / same option value) are
+     skipped, not overwritten; final toast shows counts (created / skipped / failed)
+- Integrated into src/app/page.tsx:
+  - Added "data" to mainTab union type
+  - Added new "Data" tab button (admin-only) with FileJson icon, next to Admin Panel
+  - Rendered <DataManagement /> when mainTab === "data"
+  - Imported Download, Upload, FileJson icons from lucide-react
+- E2E verified via agent-browser (logged in as admin):
+  - Screenshot saved: download/data-management-page.png
+  - Export All: toast "Export Complete — 53 requisitions, 31 users, 54 options exported."
+  - Export Requisitions: "53 requisition(s) exported."
+  - Export Users: "31 user(s) exported."
+  - Export Options: "54 dropdown option(s) exported."
+  - Import All test: uploaded bundle with 1 req + 1 user + 3 options -> preview
+    dialog showed all 3 sections with counts -> clicked Confirm Import -> verified
+    all 5 records created in DB -> cleaned up test data (deleted all 5)
+- Committed + pushed
+
+Stage Summary:
+- New "Data" tab in admin navigation with full JSON export/import for all app data
+- One-click "Export All" / "Import All" for full backup/restore
+- Per-section export/import for granular control
+- All data saves directly to Turso
